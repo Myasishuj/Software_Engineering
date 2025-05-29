@@ -5,7 +5,7 @@ import App from './App.jsx'
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import ExcelReader from './Excelreader';
+import ExcelReader from './ExcelReader';
 import Notification from './Notification';
 
 
