@@ -1,14 +1,42 @@
-// src/ExcelReader.jsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { QRCodeCanvas } from 'qrcode.react';
 import './ExcelReader.css';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+const MemoizedQRCode = ({ data }) => {
+  return useMemo(() => (
+    <QRCodeCanvas 
+      value={data}
+      size={180}
+      level="H"
+      includeMargin={true}
+    />
+  ), [data]);
+};
 
 function ExcelReader() {
   const [excelData, setExcelData] = useState([]);
   const [fileName, setFileName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchColumn, setSearchColumn] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
+  const [hoveredCards, setHoveredCards] = useState({});
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Load data from navigation state if available
+  useEffect(() => {
+    if (location.state?.excelData) {
+      setExcelData(location.state.excelData);
+      setFileName(location.state.fileName || 'Previously loaded file');
+    }
+  }, [location.state]);
+
+  const handleCardHover = useCallback((index) => {
+    setHoveredCards(prev => ({ ...prev, [index]: true }));
+  }, []);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -17,6 +45,7 @@ function ExcelReader() {
     setFileName(file.name);
     setSearchTerm('');
     setSearchColumn('');
+    setHoveredCards({});
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -46,20 +75,63 @@ function ExcelReader() {
   }, [excelData]);
 
   const filteredData = useMemo(() => {
-    if (!searchTerm || !searchColumn) return excelData;
+    let data = [...excelData];
 
-    return excelData.filter(row => {
-      const value = row[searchColumn];
-      if (value === undefined) return false;
-      
-      return String(value).toLowerCase().includes(searchTerm.toLowerCase());
+    if (searchTerm && searchColumn) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      data = data.filter(row => {
+        const value = row[searchColumn];
+        if (value === undefined) return false;
+        return String(value).toLowerCase().includes(lowerCaseSearchTerm);
+      });
+    }
+
+    if (sortOrder) {
+      const dateColumn = columns.find(col => col.toLowerCase().includes('date'));
+      if (dateColumn) {
+        data.sort((a, b) => {
+          const dateA = new Date(a[dateColumn]);
+          const dateB = new Date(b[dateColumn]);
+          return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+      }
+    }
+
+    return data;
+  }, [excelData, searchTerm, searchColumn, sortOrder, columns]);
+
+  const handleNotificationClick = () => {
+    navigate('/notification', { 
+      state: { 
+        records: filteredData,
+        excelData: excelData,
+        fileName: fileName
+      } 
     });
-  }, [excelData, searchTerm, searchColumn]);
+  };
+
+  const memoizedRowStrings = useMemo(() => {
+    const cache = {};
+    filteredData.forEach((row, index) => {
+      cache[index] = JSON.stringify(row);
+    });
+    return cache;
+  }, [filteredData]);
+
+  const resetSearch = useCallback(() => {
+    setSearchTerm('');
+    setSearchColumn('');
+  }, []);
 
   return (
     <div className="container">
       <h1>Excel to QR Code Generator</h1>
-      
+      <button 
+        onClick={handleNotificationClick} 
+        className="nav-button"
+      >
+        Go to Notification Page
+      </button>
       <div className="file-input-container">
         <label className="file-input-label">
           Choose Excel File
@@ -78,6 +150,15 @@ function ExcelReader() {
           <h3>Search Records</h3>
           <div className="search-controls">
             <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="search-select"
+            >
+              <option value="">Sort by Date</option>
+              <option value="asc">Expiry Closest</option>
+              <option value="desc">Expiry Farthest</option>
+            </select>
+            <select
               value={searchColumn}
               onChange={(e) => setSearchColumn(e.target.value)}
               className="search-select"
@@ -87,7 +168,6 @@ function ExcelReader() {
                 <option key={index} value={col}>{col}</option>
               ))}
             </select>
-            
             <input
               type="text"
               placeholder="Search term..."
@@ -96,12 +176,8 @@ function ExcelReader() {
               className="search-input"
               disabled={!searchColumn}
             />
-            
             <button
-              onClick={() => {
-                setSearchTerm('');
-                setSearchColumn('');
-              }}
+              onClick={resetSearch}
               className="reset-button"
             >
               Reset
@@ -114,37 +190,34 @@ function ExcelReader() {
       )}
 
       {filteredData.length > 0 ? (
-        <>
-          <div className="grid">
-            {filteredData.map((row, index) => (
-              <div className="card" key={index}>
-                <h3>Record #{excelData.indexOf(row) + 1}</h3>
-                <div className="data-container">
-                  <pre>{JSON.stringify(row, null, 2)}</pre>
-                </div>
-                <div className="qr-container">
-                  <QRCodeCanvas 
-                    value={JSON.stringify(row)} 
-                    size={180}
-                    level="H"
-                    includeMargin={true}
-                  />
-                  <p className="qr-caption">Scan to view data</p>
-                </div>
+        <div className="grid">
+          {filteredData.map((row, index) => (
+            <div 
+              className="card" 
+              key={index}
+              onMouseEnter={() => handleCardHover(index)}
+            >
+              <h3>Record #{index + 1}</h3>
+              <div className="data-container">
+                {Object.entries(row).map(([key, value]) => (
+                  <p key={key}><strong>{key}:</strong> {value}</p>
+                ))}
               </div>
-            ))}
-          </div>
-        </>
+              <div className="qr-container">
+                {hoveredCards[index] ? (
+                  <MemoizedQRCode data={memoizedRowStrings[index]} />
+                ) : (
+                  <div className="qr-placeholder">Hover to generate QR</div>
+                )}
+                <p className="qr-caption">Scan for Record {index + 1}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : excelData.length > 0 ? (
         <div className="empty-state">
           <p>No records found matching your search criteria.</p>
-          <button
-            onClick={() => {
-              setSearchTerm('');
-              setSearchColumn('');
-            }}
-            className="reset-button"
-          >
+          <button onClick={resetSearch} className="reset-button">
             Show All Records
           </button>
         </div>

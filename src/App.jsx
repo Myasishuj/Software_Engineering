@@ -1,18 +1,21 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ExcelReader from './Excelreader.jsx';
-import './ExcelReader.css'
+import Notification from './Notification';
+import './ExcelReader.css';
 
 function App() {
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Excel Entry Tracker</h1>
-      <ExcelReader />
-    </div>
+    <Router>
+      <div style={{ padding: '2rem' }}>
+        <h1>Excel Entry Tracker</h1>
+        <Routes>
+          <Route path="/" element={<ExcelReader />} />
+          <Route path="/excel-reader" element={<ExcelReader />} />
+          <Route path="/notification" element={<Notification />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
-
-
-export default App
+export default App;

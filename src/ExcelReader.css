@@ -1,69 +1,113 @@
-/* Update your card and grid styles */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
   justify-content: center;
-  gap: 3rem; /* Increased from 2rem to 3rem for more spacing */
-  width: 100%;
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1rem;
 }
 
 .card {
-  background: var(--background-card);
-  border-radius: var(--border-radius);
+  position: relative;
+  background: darkgray;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: var(--box-shadow);
-  transition: var(--transition);
-  border: 1px solid var(--border-color);
-  color: var(--text-dark);
-  width: 240px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  border: 1px solid #c7c7c7;
+  color: #171717;
+  width: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.data-container {
-  padding: 1.5rem; /* Same padding as card */
-  width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .qr-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  width: 100%;
-  padding: 1.5rem; /* Same padding as card and data */
-  padding-top: 0; /* Remove top padding to connect with data */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease;
+  z-index: 10;
+  padding: 1.5rem;
   box-sizing: border-box;
+  transform: scale(0.95);
 }
 
-/* Responsive adjustments */
+.qr-container > * {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.card:hover .qr-container {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.qr-caption {
+  color: white;
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.nav-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  margin: 1rem 0;
+  font-size: 1rem;
+  border-radius: 8px;.nav-button {
+  padding: 0.5rem 1rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nav-button:hover {
+  background-color: #45a049;
+}
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.nav-button:hover {
+  background-color: #0056b3;
+}
+
 @media (min-width: 1100px) {
   .grid {
-    grid-template-columns: repeat(4, 240px);
+    grid-template-columns: repeat(4, 280px);
   }
 }
-
 @media (max-width: 1099px) and (min-width: 800px) {
   .grid {
-    grid-template-columns: repeat(3, 240px);
+    grid-template-columns: repeat(3, 280px);
   }
 }
-
 @media (max-width: 799px) and (min-width: 550px) {
   .grid {
-    grid-template-columns: repeat(2, 240px);
+    grid-template-columns: repeat(2, 280px);
   }
 }
-
 @media (max-width: 549px) {
   .grid {
-    grid-template-columns: 280px;
-  }
-  .card {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
