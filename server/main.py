@@ -8,12 +8,20 @@ from user import user_bp
 app = Flask(__name__)
 CORS(app)
 
-# JWT setup
 app.config['JWT_SECRET_KEY'] = config.JWT_SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = config.JWT_ACCESS_TOKEN_EXPIRES
 jwt = JWTManager(app)
 
-# Register blueprints
+def user_lookup_callback(_jwt_header, jwt_data):
+    identity = jwt_data["sub"]
+
+    class UserObject:
+        def __init__(self, username, role):
+            self.username = username
+            self.role = role
+
+    return UserObject(identity['username'], identity.get('role', 'user'))
+
 app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
 

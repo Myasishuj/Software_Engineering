@@ -1,32 +1,39 @@
-// src/components/LoginForm.jsx
 import React, { useState } from 'react';
-import { API_BASE } from '../api';
 
-export default function LoginForm({ setIsLoading, setMessage, onAuthSuccess }) {
+// Base URL for the backend API (needs to be consistent across components)
+const API_BASE_URL = 'http://127.0.0.1:5000';
+
+// Login Form Component
+const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage('');
 
     try {
-      const res = await fetch(`${API_BASE}/login`, {
+      // Use the correct API_BASE_URL and the /login endpoint
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
 
-      if (res.ok) {
-        onAuthSuccess(data.access_token);
+      const data = await response.json();
+
+      if (response.ok) {
+        // Pass token, username, AND role to parent
+        onAuthSuccess(data.access_token, username, data.role);
       } else {
-        setMessage(data.message || 'Login failed');
+        setMessage(data.msg || 'Login failed. Please check your credentials.');
       }
-    } catch (err) {
-      console.error(err);
-      setMessage('Network error: Backend not reachable');
+    } catch (error) {
+      console.error('Login error (check backend server):', error);
+      setMessage('Network error. Please ensure the backend server is running and accessible at ' + API_BASE_URL);
     } finally {
       setIsLoading(false);
     }
@@ -35,29 +42,39 @@ export default function LoginForm({ setIsLoading, setMessage, onAuthSuccess }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="username" className="block text-gray-700">Username</label>
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+          Username
+        </label>
         <input
+          type="text"
           id="username"
+          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           value={username}
-          onChange={e => setUsername(e.target.value)}
+          onChange={(e) => setUsername(e.target.value)}
           required
-          className="w-full border rounded px-3 py-2"
         />
       </div>
       <div>
-        <label htmlFor="password" className="block text-gray-700">Password</label>
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+          Password
+        </label>
         <input
-          id="password"
           type="password"
+          id="password"
+          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full border rounded px-3 py-2"
         />
       </div>
-      <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
+      <button
+        type="submit"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
+      >
         Log In
       </button>
     </form>
   );
-}
+};
+
+export default LoginForm;
