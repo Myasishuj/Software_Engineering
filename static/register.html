@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Register &amp; Login</title>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; display:flex; align-items:center; justify-content:center; height:100vh; }
+    .box { background:white; padding:2rem; border-radius:8px; width:300px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+    input, button { width:100%; padding:0.5rem; margin:0.5rem 0; }
+    button { cursor:pointer; }
+    #message { height:1.5rem; color:red; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h3 id="form-title">Login</h3>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="submit-btn">Submit</button>
+    <p id="toggle"><small>Don't have an account? <a href="#">Register</a></small></p>
+    <p id="message"></p>
+  </div>
+  <script>
+    let isLogin = true;
+    const title = document.getElementById('form-title');
+    const toggle = document.getElementById('toggle');
+    const btn = document.getElementById('submit-btn');
+    const msg = document.getElementById('message');
+
+    toggle.addEventListener('click', e => {
+      e.preventDefault();
+      isLogin = !isLogin;
+      title.textContent = isLogin ? 'Login' : 'Register';
+      toggle.innerHTML = isLogin
+        ? `Don't have an account? <a href="#">Register</a>`
+        : `Already have an account? <a href="#">Login</a>`;
+      msg.textContent = '';
+    });
+
+    btn.addEventListener('click', async () => {
+      msg.textContent = '';
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      if (!username || !password) return msg.textContent = 'Both fields required';
+
+      const url = isLogin ? '/auth/login' : '/auth/register';
+      const res = await fetch('http://localhost:8080' + url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        msg.style.color = 'green';
+        if (isLogin) localStorage.setItem('token', data.access_token);
+        msg.textContent = data.message || 'Success!';
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = data.message || data.error || 'Error';
+      }
+    });
+  </script>
+</body>
+</html>
