@@ -41,7 +41,16 @@ def login():
     if not user or not check_password_hash(user['password_hash'], password):
         return jsonify(msg="Invalid username or password"), 401
 
+    # Get the user's role (default to 'user' if not found)
+    user_role = user.get('role', 'user')
+    
     expires = datetime.timedelta(seconds=config.JWT_ACCESS_TOKEN_EXPIRES)
-    identity = {'username': username, 'role': user.get('role', 'user')}
+    identity = {'username': username, 'role': user_role}
     token = create_access_token(identity=identity, expires_delta=expires)
-    return jsonify(access_token=token), 200
+    
+    # FIXED: Return the role along with the access token
+    return jsonify(
+        access_token=token,
+        role=user_role,
+        username=username
+    ), 200
