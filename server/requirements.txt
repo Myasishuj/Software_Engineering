@@ -7,3 +7,5 @@ python-dotenv
 flask-jwt-extended
 flask-pymongo
 werkzeug
+pandas
+openpyxl

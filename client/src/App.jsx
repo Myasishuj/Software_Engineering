@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import AuthView from './components/AuthView.jsx';
-import UserDashboardView from './components/UserDashboardView.jsx';
-import AdminDashboardView from './components/AdminDashboardView.jsx';
+import AuthView from './components/AuthView'; // Removed .jsx extension
+import UserDashboardView from './components/UserDashboardView'; // Removed .jsx extension
+import AdminDashboardView from './components/AdminDashboardView'; // Removed .jsx extension
+import { FileSpreadsheet } from 'lucide-react'; // Import icon for consistent styling
 
 // Main App component
 const App = () => {
@@ -13,7 +14,7 @@ const App = () => {
   const [message, setMessage] = useState('');
   // State for loading indicator
   const [isLoading, setIsLoading] = useState(false);
-  // State to manage authentication token (JWT) - using React state instead of localStorage
+  // State to manage authentication token (JWT)
   const [authToken, setAuthToken] = useState(null);
 
   // Clear message after a few seconds
@@ -44,16 +45,17 @@ const App = () => {
 
   // Render AuthView if no token, otherwise render the appropriate DashboardView
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h1 className="text-3xl font-extrabold text-gray-800 text-center mb-6">
-          {authToken ? `Welcome, ${currentUser} (${userRole})!` : 'User Authentication'}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 font-sans">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200"> {/* Increased max-w-md to max-w-4xl to accommodate ExcelCreatorApp */}
+        <h1 className="text-3xl font-extrabold text-gray-800 text-center mb-6 flex items-center justify-center">
+          <FileSpreadsheet className="w-8 h-8 mr-3 text-green-600" /> {/* Added an icon for consistency */}
+          {authToken ? `Welcome, ${currentUser} (${userRole})!` : 'Excel Creator - User Authentication'}
         </h1>
 
         {/* Display messages from the backend or local state */}
         {message && (
           <div className={`p-3 mb-4 rounded-md text-sm font-medium ${
-            message.includes('successful') || message.includes('Welcome') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            message.includes('successful') || message.includes('Welcome') ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
           }`}>
             {message}
           </div>

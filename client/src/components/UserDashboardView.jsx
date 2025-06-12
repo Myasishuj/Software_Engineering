@@ -1,14 +1,114 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff } from 'lucide-react';
-
-// Mock API_BASE_URL for demo
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff, Search } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
+// Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
-const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, setMessage }) => {
-  const [dataEntries, setDataEntries] = useState([{ key: '', value: '' }]);
+const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, setMessage, isLoading }) => {
+  // Initialize dataEntries with the new default column names and expiry placeholder
+  const [dataEntries, setDataEntries] = useState([
+    { key: 'pid', value: '' },
+    { key: 'pname', value: '' },
+    { key: 'expiry', value: '', placeholder: 'dd-mm-yyyy' }, // Added placeholder for expiry
+    { key: 'quantity', value: '' },
+    { key: 'price', value: '' },
+    { key: 'type', value: '' }
+  ]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [submissionMode, setSubmissionMode] = useState('form'); // 'form' or 'json'
   const [jsonInput, setJsonInput] = useState('');
+
+  // Barcode specific states
+  const [barcodeSearchQuery, setBarcodeSearchQuery] = useState('');
+  const [barcodeResult, setBarcodeResult] = useState(null); // Stores the matching record for barcode
+  const [barcodeErrorMessage, setBarcodeErrorMessage] = useState('');
+  const barcodeCanvasRef = useRef(null); // Ref for the barcode canvas element
+
+  // Effect to load JsBarcode library dynamically
+  useEffect(() => {
+    const scriptId = 'jsbarcode-script';
+    // Only attempt to load if the script is not already in the DOM and JsBarcode is not globally available
+    if (!document.getElementById(scriptId) && typeof window.JsBarcode === 'undefined') {
+      console.log('Attempting to load JsBarcode script...');
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.min.js';
+      script.onload = () => {
+        console.log('JsBarcode loaded successfully!');
+        // No need to call generateAndDisplayBarcode here; the separate effect handles it.
+      };
+      script.onerror = (e) => {
+        console.error('Failed to load JsBarcode script from CDN. Details:', e);
+        setMessage('Failed to load barcode generator script. Please check your network connection, firewall, or browser extensions (e.g., ad blockers) and try refreshing.'); // User-facing message
+        setBarcodeErrorMessage('Barcode generator failed to load due to network or browser issues.');
+      };
+      document.body.appendChild(script);
+    } else if (typeof window.JsBarcode !== 'undefined') {
+      console.log('JsBarcode script already loaded.');
+    }
+  }, []); // Empty dependency array means this effect runs once on mount
+
+  // Effect to generate and display barcode when barcodeResult or canvas ref changes AND JsBarcode is loaded
+  useEffect(() => {
+    console.log('Barcode useEffect triggered. barcodeResult:', barcodeResult, 'canvasRef.current:', barcodeCanvasRef.current, 'JsBarcode available:', typeof window.JsBarcode !== 'undefined');
+    if (barcodeResult && barcodeCanvasRef.current && typeof window.JsBarcode !== 'undefined') {
+      generateAndDisplayBarcode(barcodeResult);
+    } else if (barcodeResult && !barcodeCanvasRef.current) {
+        console.warn('Barcode result is available, but canvas ref is not yet connected to DOM.');
+    } else if (barcodeResult && typeof window.JsBarcode === 'undefined') {
+        console.warn('Barcode result is available, but JsBarcode library is not yet loaded.');
+    }
+  }, [barcodeResult, barcodeCanvasRef.current]); // Depend on barcodeResult and barcodeCanvasRef.current
+
+  // Function to generate and display barcode on the canvas
+  const generateAndDisplayBarcode = (record) => {
+    // Ensure JsBarcode library is loaded before attempting to use it
+    if (!barcodeCanvasRef.current || typeof window.JsBarcode === 'undefined') {
+      console.warn('Barcode canvas ref or JsBarcode library not available for generation. Aborting barcode draw.');
+      setBarcodeErrorMessage('Barcode generator is not loaded. Please try refreshing or check your network.');
+      return;
+    }
+
+    let barcodeValue = '';
+    // Prioritize 'pid' or 'pname' if available, otherwise take the first available string value
+    if (record && record['pid']) { // Added check for record existence
+      barcodeValue = String(record['pid']);
+    } else if (record && record['pname']) { // Added check for record existence
+        barcodeValue = String(record['pname']);
+    } else if (record) { // Only iterate if record exists
+      // Find the first string value in the record
+      for (const key in record) {
+        if (typeof record[key] === 'string' && record[key].trim() !== '') {
+          barcodeValue = record[key];
+          break;
+        }
+      }
+    }
+
+    console.log('Attempting to draw barcode with value:', barcodeValue);
+
+    if (barcodeValue.trim()) { // Ensure barcodeValue is not just empty or whitespace
+      try {
+        window.JsBarcode(barcodeCanvasRef.current, barcodeValue, {
+          format: "CODE128", // Common barcode format
+          displayValue: true, // Show the value below the barcode
+          height: 80,
+          width: 2,
+          margin: 10,
+          background: "#ffffff",
+          lineColor: "#333333"
+        });
+        setBarcodeErrorMessage(''); // Clear any previous barcode errors
+        console.log('Barcode drawn successfully!');
+      } catch (error) {
+        console.error("Error drawing barcode on canvas:", error);
+        setBarcodeErrorMessage("Failed to generate barcode: " + error.message);
+      }
+    } else {
+      console.warn('Barcode value is empty or contains only whitespace. Cannot generate barcode.');
+      setBarcodeErrorMessage('No suitable string value found in the record to generate a barcode or the value is empty.');
+    }
+  };
 
   // Add a new empty row
   const addNewEntry = () => {
@@ -17,6 +117,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
   // Remove an entry by index
   const removeEntry = (index) => {
+    // Only allow removing if there's more than one entry
     if (dataEntries.length > 1) {
       setDataEntries(dataEntries.filter((_, i) => i !== index));
     }
@@ -32,33 +133,33 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   // Convert form data to JSON
   const convertToJson = () => {
     const validEntries = dataEntries
-      .filter(entry => entry.key.trim() && entry.value.trim())
+      .filter(entry => entry.key.trim() && entry.value.trim()) // Only include entries with both key and value
       .reduce((obj, entry) => {
         obj[entry.key.trim()] = entry.value.trim();
         return obj;
       }, {});
     
+    // Wrap in an array if there are valid entries, as expected by the backend
+    // The backend expects an array of objects, even if there's only one record.
     return Object.keys(validEntries).length > 0 ? [validEntries] : [];
   };
 
   // Handle form-based submission
   const handleFormSubmit = async () => {
-    
     const jsonData = convertToJson();
     if (jsonData.length === 0) {
       setMessage('Please enter at least one key-value pair with both fields filled.');
       return;
     }
-
     await submitData(jsonData);
   };
 
   // Handle JSON-based submission
   const handleJsonSubmit = async () => {
-    
     let records;
     try {
       records = JSON.parse(jsonInput);
+      // Validate that the parsed JSON is an array of objects
       if (!Array.isArray(records) || !records.every(item => typeof item === 'object' && item !== null)) {
         throw new Error('Input must be a JSON array of objects.');
       }
@@ -66,63 +167,72 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
       setMessage('Invalid JSON format. Please enter a valid JSON array of objects.');
       return;
     }
-
     await submitData(records);
   };
 
-  // Common submission logic
+  // Common submission logic for both form and JSON input
   const submitData = async (records) => {
-    setIsLoading(true);
-    setMessage('');
+    setIsLoading(true); // Show global loading indicator
+    setMessage(''); // Clear previous messages
 
     try {
       const response = await fetch(`${API_BASE_URL}/dashboard/submit-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
+          'Authorization': `Bearer ${authToken}` // Include JWT for authentication
         },
-        body: JSON.stringify(records),
+        body: JSON.stringify(records), // Send data as JSON string
       });
 
-      const data = await response.json();
+      const data = await response.json(); // Parse response JSON
 
       if (response.ok) {
-        setMessage('Data submitted successfully!');
-        // Reset form
+        setMessage('Data submitted successfully and is pending admin approval!'); // Updated message
+        // Reset form or JSON input after successful submission
         if (submissionMode === 'form') {
-          setDataEntries([{ key: '', value: '' }]);
+          // Reset to initial example entries
+          setDataEntries([
+            { key: 'pid', value: '' },
+            { key: 'pname', value: '' },
+            { key: 'expiry', value: '', placeholder: 'dd-mm-yyyy' },
+            { key: 'quantity', value: '' },
+            { key: 'price', value: '' },
+            { key: 'type', value: '' }
+          ]);
         } else {
-          setJsonInput('');
+          setJsonInput(''); // Clear JSON input
         }
       } else {
-        setMessage(data.msg || 'Failed to submit data.');
+        setMessage(data.msg || 'Failed to submit data.'); // Display error message from backend
       }
     } catch (error) {
       console.error('Data submission error:', error);
-      setMessage('Network error. Please try again.');
+      setMessage('Network error. Please try again.'); // Generic network error message
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Hide global loading indicator
     }
   };
 
+  // Handle downloading Excel file for the user's approved daily data
   const handleDownloadExcel = async () => {
-    setIsLoading(true);
-    setMessage('');
+    setIsLoading(true); // Show global loading indicator
+    setMessage(''); // Clear previous messages
 
     try {
       const response = await fetch(`${API_BASE_URL}/dashboard/download-excel`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${authToken}`
+          'Authorization': `Bearer ${authToken}` // Include JWT for authentication
         },
       });
 
       if (response.ok) {
-        const blob = await response.blob();
+        const blob = await response.blob(); // Get file as a blob
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = 'daily_data.xlsx';
+        let filename = 'daily_data.xlsx'; // Default filename
 
+        // Extract filename from Content-Disposition header if available
         if (contentDisposition && contentDisposition.includes('filename=')) {
           const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
           if (filenameMatch && filenameMatch[1]) {
@@ -130,43 +240,86 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
           }
         }
 
+        // Create a temporary URL and download link
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        a.click(); // Programmatically click the link to trigger download
+        a.remove(); // Clean up the temporary link
+        window.URL.revokeObjectURL(url); // Release the object URL
         setMessage('Excel file downloaded successfully!');
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json(); // Get error message from backend
         setMessage(errorData.msg || 'Failed to download Excel file.');
       }
     } catch (error) {
       console.error('Excel download error:', error);
       setMessage('Network error during Excel download. Please try again.');
     } finally {
+      setIsLoading(false); // Hide global loading indicator
+    }
+  };
+
+  // Handle searching for barcode data
+  const handleSearchForBarcode = async () => {
+    setIsLoading(true); // Use global loading indicator
+    setBarcodeResult(null); // Clear previous result before new search
+    setBarcodeErrorMessage('');
+    setMessage(''); // Clear general messages
+
+    if (!barcodeSearchQuery.trim()) {
+      setBarcodeErrorMessage('Please enter a search term for the barcode.');
       setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard/search-approved-data?query=${encodeURIComponent(barcodeSearchQuery.trim())}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.matching_records && data.matching_records.length > 0) {
+        const firstMatch = data.matching_records[0]; // Take the first matching record
+        setBarcodeResult(firstMatch); // This will trigger the useEffect for drawing
+        setMessage('Matching record found and barcode generated!');
+      } else {
+        setBarcodeResult(null); // Clear previous barcode result
+        setBarcodeErrorMessage(data.msg || 'No approved data found matching your search term.');
+        setMessage('No approved data found matching your search term.');
+      }
+    } catch (error) {
+      console.error('Error searching for barcode data:', error);
+      setBarcodeResult(null); // Clear previous barcode result
+      setBarcodeErrorMessage('Network error during barcode search. Please try again.');
+      setMessage('Network error during barcode search.');
+    } finally {
+      setIsLoading(false); // Hide global loading indicator
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Welcome Message */}
+      {/* Welcome Message Section */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome, {currentUser}!</h1>
         <p className="text-gray-700">
-          Submit your data using the easy form below or upload JSON directly. Download your daily reports anytime.
+          Submit your data using the easy form below or upload JSON directly. Your data will be reviewed by an admin before it appears in reports. Download your *approved* daily reports anytime.
         </p>
       </div>
 
       {/* Data Submission Section */}
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Submit Your Data</h2>
+          <h2 className="text-xl font-bold text-gray-800">Submit Your Data for Approval</h2>
           
-          {/* Mode Toggle */}
+          {/* Mode Toggle Buttons */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setSubmissionMode('form')}
@@ -192,7 +345,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         </div>
 
         {submissionMode === 'form' ? (
-          /* Form Mode */
+          /* Form Input Mode */
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -209,6 +362,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                 </button>
               </div>
               
+              {/* Dynamic Form Fields */}
               {dataEntries.map((entry, index) => (
                 <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
                   <div className="flex-1">
@@ -223,7 +377,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                   <div className="flex-1">
                     <input
                       type="text"
-                      placeholder="Value (e.g., apple, laptop, John)"
+                      placeholder={entry.placeholder || "Value (e.g., apple, laptop, John)"} // Use entry.placeholder
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       value={entry.value}
                       onChange={(e) => updateEntry(index, 'value', e.target.value)}
@@ -232,7 +386,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                   <button
                     type="button"
                     onClick={() => removeEntry(index)}
-                    disabled={dataEntries.length === 1}
+                    disabled={dataEntries.length === 1} // Disable remove button if only one entry
                     className="p-2 text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -240,6 +394,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                 </div>
               ))}
               
+              {/* Add New Field Button */}
               <button
                 type="button"
                 onClick={addNewEntry}
@@ -250,7 +405,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
               </button>
             </div>
 
-            {/* JSON Preview */}
+            {/* JSON Preview Section */}
             {showJsonPreview && (
               <div className="bg-gray-100 p-4 rounded-lg">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">JSON Preview:</h4>
@@ -260,6 +415,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
               </div>
             )}
 
+            {/* Submit Data Button (Form Mode) */}
             <button
               onClick={handleFormSubmit}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105 flex items-center justify-center"
@@ -269,7 +425,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
             </button>
           </div>
         ) : (
-          /* JSON Mode */
+          /* JSON Input Mode */
           <div className="space-y-4">
             <div>
               <label className="block text-gray-700 text-sm font-semibold mb-2">
@@ -279,21 +435,21 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                 <strong>Example format:</strong>
                 <pre className="mt-1 text-xs">
 {`[
-  {"item": "apple", "quantity": 10, "price": 1.5},
-  {"item": "banana", "quantity": 5, "price": 0.8}
+  {"pid": "A123", "pname": "Product X", "expiry": "12-31-2024", "quantity": 10, "price": 9.99, "type": "Electronics"}
 ]`}
                 </pre>
               </div>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
                 rows="8"
-                placeholder='[{"field1": "value1", "field2": "value2"}]'
+                placeholder='[{"pid": "P001", "pname": "Item A", "expiry": "01-01-2025", "quantity": 5, "price": 100.00, "type": "Book"}]'
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
                 required
               />
             </div>
             
+            {/* Submit Data Button (JSON Mode) */}
             <button
               onClick={handleJsonSubmit}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105 flex items-center justify-center"
@@ -305,25 +461,68 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         )}
       </div>
 
+      {/* Barcode Generation Section */}
+      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Generate Barcode from Approved Data</h2>
+        <p className="text-gray-700 mb-4">
+          Enter a term (e.g., a product ID or name) to search your approved data and generate a barcode.
+        </p>
+        <div className="flex space-x-2 mb-4">
+          <input
+            type="text"
+            placeholder="Search term for barcode (e.g., 'pid' value, 'pname' value)"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={barcodeSearchQuery}
+            onChange={(e) => setBarcodeSearchQuery(e.target.value)}
+          />
+          <button
+            onClick={handleSearchForBarcode}
+            disabled={isLoading} 
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 disabled:bg-gray-400"
+          >
+            <Search className="w-4 h-4 mr-2" />
+            Search & Generate
+          </button>
+        </div>
+        {barcodeErrorMessage && (
+          <div className="p-2 bg-red-100 text-red-700 rounded-md text-sm mb-4">
+            {barcodeErrorMessage}
+          </div>
+        )}
+        {barcodeResult && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+            <h4 className="text-lg font-semibold text-gray-800 mb-2">Generated Barcode:</h4>
+            {/* Explicit width and height for canvas to ensure JsBarcode has a drawing surface */}
+            <canvas ref={barcodeCanvasRef} width="300" height="100" className="mx-auto border border-gray-300 bg-white rounded-md"></canvas>
+            <p className="text-sm text-gray-600 mt-2">
+              Barcode value: <span className="font-mono">{barcodeResult['pid'] || barcodeResult['pname'] || Object.values(barcodeResult).find(val => typeof val === 'string' && val.trim() !== '') || 'N/A'}</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              (Based on the first suitable string value from the matched record: priority given to 'pid', then 'pname', then any other string field. For more control, please refine your search.)
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Excel Download Section */}
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Your Daily Report</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Your Approved Daily Report</h2>
         <p className="text-gray-700 mb-4">
-          Download an Excel file containing all the data you've submitted today.
+          Download an Excel file containing all the data you've submitted **and that has been approved by an admin** for today.
         </p>
         <button
           onClick={handleDownloadExcel}
           className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105 flex items-center justify-center"
         >
           <Download className="w-5 h-5 mr-2" />
-          Download Today's Excel Report
+          Download Today's Approved Excel Report
         </button>
       </div>
 
       {/* Logout Button */}
       <button
         onClick={onLogout}
-        className="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-300 transform hover:scale-105 flex items-center justify-center"
+        className="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-300 transform hover:scale-105 mt-6"
       >
         <LogOut className="w-5 h-5 mr-2" />
         Logout
