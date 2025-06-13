@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff, Search } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff, Search, AlertCircle } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
+
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
@@ -24,28 +25,43 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   const [barcodeErrorMessage, setBarcodeErrorMessage] = useState('');
   const barcodeCanvasRef = useRef(null); // Ref for the barcode canvas element
 
-  // Effect to load JsBarcode library dynamically
+  // Expiring items notification states
+  const [expiringItems, setExpiringItems] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false); // State to control visibility of notification details
+
+  // Effect to load JsBarcode library dynamically from local public folder
   useEffect(() => {
     const scriptId = 'jsbarcode-script';
     // Only attempt to load if the script is not already in the DOM and JsBarcode is not globally available
     if (!document.getElementById(scriptId) && typeof window.JsBarcode === 'undefined') {
-      console.log('Attempting to load JsBarcode script...');
+      console.log('Attempting to load JsBarcode script from local path...');
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.min.js';
+      script.src = '/JsBarcode.min.js'; // Path relative to public folder
       script.onload = () => {
-        console.log('JsBarcode loaded successfully!');
-        // No need to call generateAndDisplayBarcode here; the separate effect handles it.
+        console.log('JsBarcode loaded successfully from local path!');
+        // Trigger explicit barcode generation if a result was already present
+        if (barcodeResult && barcodeCanvasRef.current) {
+          generateAndDisplayBarcode(barcodeResult);
+        }
       };
       script.onerror = (e) => {
-        console.error('Failed to load JsBarcode script from CDN. Details:', e);
-        setMessage('Failed to load barcode generator script. Please check your network connection, firewall, or browser extensions (e.g., ad blockers) and try refreshing.'); // User-facing message
-        setBarcodeErrorMessage('Barcode generator failed to load due to network or browser issues.');
+        console.error('Failed to load JsBarcode script from local path. This could be due to incorrect file placement or other issues.', e);
+        setMessage('Failed to load barcode generator script. Ensure "JsBarcode.min.js" is in your public/ folder.');
+        setBarcodeErrorMessage('Barcode generator failed to load.');
       };
       document.body.appendChild(script);
     } else if (typeof window.JsBarcode !== 'undefined') {
-      console.log('JsBarcode script already loaded.');
+      console.log('JsBarcode script already loaded (or found globally).');
     }
+
+    // Cleanup function to remove the script if component unmounts (optional, but good practice)
+    return () => {
+      const existingScript = document.getElementById(scriptId);
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
   }, []); // Empty dependency array means this effect runs once on mount
 
   // Effect to generate and display barcode when barcodeResult or canvas ref changes AND JsBarcode is loaded
@@ -60,6 +76,36 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
     }
   }, [barcodeResult, barcodeCanvasRef.current]); // Depend on barcodeResult and barcodeCanvasRef.current
 
+  // Effect to fetch expiring items periodically
+  useEffect(() => {
+    const fetchExpiringItems = async () => {
+      if (!authToken) return; // Don't fetch if not authenticated
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/dashboard/expiring-items?days=30`, { // Fetch items expiring within 30 days
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          },
+        });
+        const data = await response.json();
+        if (response.ok && data.expiring_items) {
+          setExpiringItems(data.expiring_items);
+        } else {
+          setExpiringItems([]); // Clear if no expiring items or an error
+        }
+      } catch (error) {
+        console.error('Failed to fetch expiring items:', error);
+        // Optionally set a user-facing message here if needed
+      }
+    };
+
+    fetchExpiringItems(); // Initial fetch on component mount
+    const intervalId = setInterval(fetchExpiringItems, 300000); // Poll every 5 minutes (300000 ms)
+
+    return () => clearInterval(intervalId); // Cleanup interval on component unmount
+  }, [authToken]); // Refetch when authToken changes
+
   // Function to generate and display barcode on the canvas
   const generateAndDisplayBarcode = (record) => {
     // Ensure JsBarcode library is loaded before attempting to use it
@@ -71,11 +117,11 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
     let barcodeValue = '';
     // Prioritize 'pid' or 'pname' if available, otherwise take the first available string value
-    if (record && record['pid']) { // Added check for record existence
+    if (record && record['pid']) {
       barcodeValue = String(record['pid']);
-    } else if (record && record['pname']) { // Added check for record existence
+    } else if (record && record['pname']) {
         barcodeValue = String(record['pname']);
-    } else if (record) { // Only iterate if record exists
+    } else if (record) {
       // Find the first string value in the record
       for (const key in record) {
         if (typeof record[key] === 'string' && record[key].trim() !== '') {
@@ -89,7 +135,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
     if (barcodeValue.trim()) { // Ensure barcodeValue is not just empty or whitespace
       try {
-        window.JsBarcode(barcodeCanvasRef.current, barcodeValue, {
+        window.JsBarcode(barcodeCanvasRef.current, barcodeValue, { // Use window.JsBarcode
           format: "CODE128", // Common barcode format
           displayValue: true, // Show the value below the barcode
           height: 80,
@@ -313,6 +359,37 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
           Submit your data using the easy form below or upload JSON directly. Your data will be reviewed by an admin before it appears in reports. Download your *approved* daily reports anytime.
         </p>
       </div>
+
+      {/* Notification Area */}
+      {expiringItems.length > 0 && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg flex items-center justify-between shadow-md">
+          <div className="flex items-center">
+            <AlertCircle className="w-6 h-6 mr-3" />
+            <span className="font-semibold">
+              You have {expiringItems.length} item(s) expiring soon!
+            </span>
+          </div>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="text-yellow-700 hover:text-yellow-900 font-medium ml-4 focus:outline-none"
+          >
+            {showNotifications ? 'Hide Details' : 'View Details'}
+          </button>
+        </div>
+      )}
+
+      {showNotifications && expiringItems.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow-inner border border-gray-200">
+          <h3 className="text-lg font-bold text-gray-800 mb-3">Expiring Items:</h3>
+          <ul className="list-disc list-inside space-y-1 text-gray-700">
+            {expiringItems.map((item, index) => (
+              <li key={index} className="text-sm">
+                <span className="font-semibold">{item.pname || item.pid || 'N/A'}</span> (Expires: {item.expiry || 'N/A'})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Data Submission Section */}
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">

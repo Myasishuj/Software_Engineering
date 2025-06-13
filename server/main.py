@@ -1,122 +1,282 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, make_response
 from flask_cors import CORS
-from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity, get_jwt
+from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity
 import pandas as pd
 import io
 import json
 from datetime import datetime, timedelta, timezone
 import logging
+from functools import wraps 
 
 # For MongoDB
 from pymongo import MongoClient
-from bson.objectid import ObjectId # To handle MongoDB's default _id
+from bson.objectid import ObjectId 
 from werkzeug.security import generate_password_hash, check_password_hash
-import os # For environment variables
+import os 
+
+# For Email Notifications
+import smtplib
+from email.message import EmailMessage
+from socket import gaierror # Import for network-related errors
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Define the allowed origin for your frontend.
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+# Initialize Flask-CORS with basic settings.
+CORS(app) 
+
+# --- ULTIMATE BRUTE FORCE CORS HANDLING FOR OPTIONS REQUESTS ---
+@app.before_request
+def handle_options_preflight():
+    if request.method == 'OPTIONS':
+        print(f"DEBUG: Intercepted OPTIONS request for path: {request.path}")
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Max-Age', '86400') 
+        return response, 200
+
+# --- GENERIC OPTIONS ROUTE AS A FALLBACK (Added for robustness) ---
+@app.route('/<path:path>', methods=['OPTIONS'])
+def catch_all_options(path):
+    print(f"DEBUG: Hit generic OPTIONS route for path: /{path}")
+    response = make_response()
+    response.headers.add('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Max-Age', '86400')
+    return response, 200
+
 
 # --- JWT Configuration ---
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key") # Change this in production!
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24) # Tokens valid for 24 hours
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key") 
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24) 
 jwt = JWTManager(app)
 
 # --- MongoDB Connection ---
 MONGO_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/') 
 client = MongoClient(MONGO_URI)
-db = client.excel_creator_db # Your database name
-templates_collection = db.templates # Collection for general templates
-users_collection = db.users # Collection for users
-daily_data_collection = db.daily_data # This will now store APPROVED daily data
-pending_data_collection = db.pending_data # NEW: Collection for pending data requests
+db = client.excel_creator_db 
+templates_collection = db.templates 
+users_collection = db.users 
+# Consolidated collection for all submissions (pending, approved, rejected)
+submissions_collection = db.submissions 
+
+# --- Email Configuration (Placeholders - Use environment variables in production!) ---
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', 'your_email@gmail.com') # Your sending email address
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', 'your_email_app_password') # Your generated app password for Gmail or actual password
 
 # --- JWT Callbacks (for user identity) ---
 @jwt.user_identity_loader
 def user_identity_callback(user):
-    # Ensure user is a dict and has 'username'
     if isinstance(user, dict) and 'username' in user:
         return user['username']
-    return None # Or raise an error if this state is unexpected
+    return None
 
 @jwt.user_lookup_loader
 def user_lookup_callback(_jwt_header, jwt_data):
     identity = jwt_data["sub"]
     return users_collection.find_one({"username": identity})
 
-# --- Add some default templates and a default user to MongoDB if collections are empty ---
+# --- Custom Role-Based Access Control Decorator ---
+def roles_required(roles):
+    def decorator(fn):
+        @wraps(fn)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            current_user_identity = get_jwt_identity()
+            user = users_collection.find_one({"username": current_user_identity})
+            
+            if not user:
+                return jsonify({"msg": "User not found."}), 404
+            
+            if user.get('role') not in roles:
+                return jsonify({"msg": "Forbidden: Insufficient permissions."}), 403
+            
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# --- Admin role required decorator (now using roles_required) ---
+def admin_required(f):
+    @wraps(f)
+    @roles_required(['admin'])
+    def decorated_function(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Helper function for sending emails ---
+def send_email_notification(recipient_email, subject, body):
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg['Subject'] = subject
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = recipient_email
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.starttls() 
+            smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
+            smtp.send_message(msg)
+        logger.info(f"Email sent successfully to {recipient_email}")
+        return True
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"Failed to send email to {recipient_email}: Authentication error. Check SENDER_EMAIL and SENDER_PASSWORD. Details: {e}")
+        return False
+    except smtplib.SMTPConnectError as e:
+        logger.error(f"Failed to send email to {recipient_email}: Connection error. Check SMTP_SERVER and SMTP_PORT. Details: {e}")
+        return False
+    except gaierror as e: # Catch DNS resolution errors
+        logger.error(f"Failed to send email to {recipient_email}: DNS resolution error. Check SMTP_SERVER. Details: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to send email to {recipient_email}: An unexpected error occurred: {e}")
+        return False
+
+# --- Add some default templates and default users to MongoDB if collections are empty ---
 def initialize_db():
-    if templates_collection.count_documents({}) == 0:
-        logger.info("Initializing default templates into MongoDB...")
-        default_templates = [
-            {
-                'id': 'sales_report',
-                'name': 'Sales Report',
-                'description': 'Basic sales data template',
-                'columns': ['Product', 'Quantity', 'Price', 'Total'],
-                'sample_data': [
-                    {'Product': 'Laptop', 'Quantity': 5, 'Price': 999.99, 'Total': 4999.95},
-                    {'Product': 'Mouse', 'Quantity': 20, 'Price': 25.50, 'Total': 510.00}
-                ]
-            },
-            {
-                'id': 'inventory',
-                'name': 'Inventory List',
-                'description': 'Product inventory tracking',
-                'columns': ['Item', 'SKU', 'Stock', 'Location'],
-                'sample_data': [
-                    {'Item': 'Widget A', 'SKU': 'WA001', 'Stock': 150, 'Location': 'Warehouse A'},
-                    {'Item': 'Widget B', 'SKU': 'WB001', 'Stock': 75, 'Location': 'Warehouse B'}
-                ]
-            },
-            {
-                'id': 'employees',
-                'name': 'Employee List',
-                'description': 'Basic employee information',
-                'columns': ['Name', 'Department', 'Position', 'Email'],
-                'sample_data': [
-                    {'Name': 'John Doe', 'Department': 'IT', 'Position': 'Developer', 'Email': 'john@company.com'},
-                    {'Name': 'Jane Smith', 'Department': 'HR', 'Position': 'Manager', 'Email': 'jane@company.com'}
-                ]
+    try:
+        if templates_collection.count_documents({}) == 0:
+            logger.info("Initializing default templates...")
+            default_templates = [
+                {
+                    'id': 'sales_report',
+                    'name': 'Sales Report',
+                    'description': 'Basic sales data template',
+                    'columns': ['Product', 'Quantity', 'Price', 'Total'],
+                    'sample_data': [
+                        {'Product': 'Laptop', 'Quantity': 5, 'Price': 999.99, 'Total': 4999.95},
+                        {'Product': 'Mouse', 'Quantity': 20, 'Price': 25.50, 'Total': 510.00}
+                    ]
+                },
+                {
+                    'id': 'inventory',
+                    'name': 'Inventory List',
+                    'description': 'Product inventory tracking',
+                    'columns': ['Item', 'SKU', 'Stock', 'Location', 'expiry'], # Added expiry column
+                    'sample_data': [
+                        {'Item': 'Widget A', 'SKU': 'WA001', 'Stock': 150, 'Location': 'Warehouse A', 'expiry': '15-07-2025'}, # Future, within range
+                        {'Item': 'Widget B', 'SKU': 'WB001', 'Stock': 75, 'Location': 'Warehouse B', 'expiry': '01-01-2026'}, # Well in the future
+                        {'Item': 'Expired Item C', 'SKU': 'EXC001', 'Stock': 10, 'Location': 'Shelf 3', 'expiry': '10-06-2025'} # Expired recently
+                    ]
+                },
+                {
+                    'id': 'employees',
+                    'name': 'Employee List',
+                    'description': 'Basic employee information',
+                    'columns': ['Name', 'Department', 'Position', 'Email'],
+                    'sample_data': [
+                        {'Name': 'John Doe', 'Department': 'IT', 'Position': 'Developer', 'Email': 'john@company.com'},
+                        {'Name': 'Jane Smith', 'Department': 'HR', 'Position': 'Manager', 'Email': 'jane@company.com'}
+                    ]
+                }
+            ]
+            templates_collection.insert_many(default_templates)
+            logger.info("Default templates initialized.")
+        else:
+            logger.info("Templates collection is not empty, skipping initialization.")
+
+        if users_collection.count_documents({}) == 0:
+            logger.info("Initializing default users...")
+            hashed_admin_password = generate_password_hash('admin')
+            hashed_user_password = generate_password_hash('user')
+            
+            default_users = [
+                {'username': 'admin', 'password': hashed_admin_password, 'role': 'admin', 'email': 'admin@example.com'},
+                {'username': 'user', 'password': hashed_user_password, 'role': 'user', 'email': 'user@example.com'}
+            ]
+            users_collection.insert_many(default_users)
+            logger.info("Default users initialized (admin, user).")
+        else:
+            logger.info("Users collection is not empty, skipping basic user initialization.")
+            
+        # Add a specific 'tester1' user with the email from logs if not exists
+        tester1_user = users_collection.find_one({"username": "tester1"})
+        if not tester1_user:
+            hashed_tester1_password = generate_password_hash('tester1')
+            users_collection.insert_one({'username': 'tester1', 'password': hashed_tester1_password, 'role': 'tester', 'email': 'chenhayik@gmail.com'})
+            logger.info("Default tester1 user created with email chenhayik@gmail.com.")
+        else:
+            # Ensure tester1 has the correct email if it exists
+            if tester1_user.get('email') != 'chenhayik@gmail.com':
+                users_collection.update_one(
+                    {"_id": tester1_user['_id']},
+                    {"$set": {"email": 'chenhayik@gmail.com'}}
+                )
+                logger.info(f"Updated email for existing tester1 user to chenhayik@gmail.com.")
+
+
+        # Ensure all existing users have an email field for the new feature
+        # This loop is after the specific tester1 creation to avoid overwriting its email.
+        for user_doc in users_collection.find({"email": {"$exists": False}}):
+            users_collection.update_one(
+                {"_id": user_doc['_id']},
+                {"$set": {"email": f"{user_doc['username']}@example.com"}}
+            )
+            logger.info(f"Added default email for existing user: {user_doc['username']}")
+
+
+        # Add sample approved submissions for tester1 to ensure data for testing
+        tester1_user_after_creation = users_collection.find_one({"username": "tester1"})
+        if tester1_user_after_creation:
+            tester1_id = str(tester1_user_after_creation['_id'])
+            
+            # Remove any existing approved submissions for tester1 to ensure fresh state for testing
+            submissions_collection.delete_many({"user_id": tester1_id, "status": "approved"})
+            logger.info(f"Cleared existing approved submissions for tester1 for fresh test data.")
+
+            # Sample submission 1 for tester1 (expired)
+            sample_submission_1 = {
+                "user_id": tester1_id, 
+                "username": "tester1",
+                "submission_timestamp": datetime.now(timezone.utc) - timedelta(days=5), # Submitted a few days ago
+                "records": [
+                    {'Item': 'Milk Carton', 'SKU': 'MC001', 'Stock': 5, 'expiry': '12-06-2025'}, # Expired recently (today is 13-06-2025)
+                    {'Item': 'Cheese Block', 'SKU': 'CB001', 'Stock': 2, 'expiry': '20-07-2025'} # Expiring soon
+                ],
+                "status": "approved",
+                "approved_by": "admin",
+                "approval_timestamp": datetime.now(timezone.utc) - timedelta(days=4)
             }
-        ]
-        templates_collection.insert_many(default_templates)
-        logger.info("Default templates initialized.")
-    else:
-        logger.info("Templates collection is not empty, skipping initialization.")
+            submissions_collection.insert_one(sample_submission_1)
+            logger.info(f"Added sample approved submission 1 for tester1 with ID: {sample_submission_1['_id']}")
 
-    if users_collection.count_documents({}) == 0:
-        logger.info("Initializing default users into MongoDB...")
-        # Password for admin is 'admin', for user is 'user'
-        hashed_admin_password = generate_password_hash('admin')
-        hashed_user_password = generate_password_hash('user')
+            # Sample submission 2 for tester1 (another expiring item)
+            sample_submission_2 = {
+                "user_id": tester1_id, 
+                "username": "tester1",
+                "submission_timestamp": datetime.now(timezone.utc) - timedelta(days=2), # Submitted recently
+                "records": [
+                    {'Item': 'Yogurt Cup', 'SKU': 'YC001', 'Stock': 12, 'expiry': '05-07-2025'} # Expiring soon
+                ],
+                "status": "approved",
+                "approved_by": "admin",
+                "approval_timestamp": datetime.now(timezone.utc) - timedelta(days=1)
+            }
+            submissions_collection.insert_one(sample_submission_2)
+            logger.info(f"Added sample approved submission 2 for tester1 with ID: {sample_submission_2['_id']}")
+        else:
+            logger.warning("Could not find tester1 user to add sample submissions for expiry testing.")
 
-        default_users = [
-            {'username': 'admin', 'password': hashed_admin_password, 'role': 'admin'},
-            {'username': 'user', 'password': hashed_user_password, 'role': 'user'}
-        ]
-        users_collection.insert_many(default_users)
-        logger.info("Default users initialized.")
-    else:
-        logger.info("Users collection is not empty, skipping user initialization.")
+    except Exception as e:
+        logger.error(f"Error during database initialization: {e}")
 
 
 # Call initialization on app startup
 with app.app_context():
     initialize_db()
 
-
-# --- CORS headers for all responses ---
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Credentials'] = 'true' # Important for JWT with credentials
-    return response
 
 @app.route('/', methods=['GET'])
 def home():
@@ -151,7 +311,7 @@ def login():
 def register():
     username = request.json.get('username', None)
     password = request.json.get('password', None)
-    role = request.json.get('role', 'user') # Default role is 'user'
+    role = request.json.get('role', 'user') 
 
     if not username or not password:
         return jsonify({"msg": "Missing username or password"}), 400
@@ -160,13 +320,14 @@ def register():
         return jsonify({"msg": "Username already exists"}), 409
 
     hashed_password = generate_password_hash(password)
-    users_collection.insert_one({"username": username, "password": hashed_password, "role": role})
+    email = request.json.get('email', f"{username}@example.com") 
+    users_collection.insert_one({"username": username, "password": hashed_password, "role": role, "email": email})
 
     return jsonify({"msg": "User registered successfully"}), 201
 
-# --- Excel Creation & Template Routes (mostly unchanged, added JWT protection) ---
+# --- Excel Creation & Template Routes ---
 @app.route('/create-excel', methods=['POST'])
-@jwt_required() 
+@roles_required(['user', 'admin', 'tester']) 
 def create_excel():
     """
     Create an Excel file from JSON data and return it as a downloadable file
@@ -251,7 +412,7 @@ def create_excel():
         return jsonify({'error': f'Failed to create Excel file: {str(e)}'}), 500
 
 @app.route('/validate-data', methods=['POST'])
-@jwt_required() 
+@roles_required(['user', 'admin', 'tester']) 
 def validate_data():
     """
     Validate JSON data structure without creating the Excel file
@@ -290,13 +451,13 @@ def validate_data():
         return jsonify({'error': f'Validation failed: {str(e)}'}), 500
 
 @app.route('/templates', methods=['GET'])
-@jwt_required() 
+@roles_required(['user', 'admin', 'tester']) 
 def get_templates():
     """
     Get available Excel templates from MongoDB
     """
     try:
-        templates_cursor = templates_collection.find({}, {'_id': 0}) # Exclude _id
+        templates_cursor = templates_collection.find({}, {'_id': 0}) 
         templates = list(templates_cursor)
         return jsonify({'templates': templates})
     except Exception as e:
@@ -304,7 +465,7 @@ def get_templates():
         return jsonify({'error': 'Failed to retrieve templates'}), 500
 
 @app.route('/create-from-template/<template_id>', methods=['POST'])
-@jwt_required() 
+@roles_required(['user', 'admin', 'tester']) 
 def create_from_template(template_id):
     """
     Create an Excel file from a predefined template stored in MongoDB
@@ -318,7 +479,7 @@ def create_from_template(template_id):
 
         filename = template.get('name', 'template_data').lower().replace(' ', '_')
         sheet_name = template.get('sheet_name', template.get('name', 'Sheet1'))
-        data = template.get('sample_data', []) # Use sample_data
+        data = template.get('sample_data', []) 
 
         if not data:
             return jsonify({'error': 'Template has no sample data'}), 400
@@ -381,12 +542,13 @@ def create_from_template(template_id):
 # --- Daily Data Submission & Approval Workflow Endpoints ---
 
 @app.route('/dashboard/submit-data', methods=['POST'])
-@jwt_required()
+@roles_required(['user', 'tester']) 
 def submit_daily_data():
     """
     User endpoint to submit data for admin approval.
-    Data is stored in pending_data_collection with status "pending".
+    Data is stored in submissions_collection with status "pending".
     """
+    print(f"DEBUG: submit_daily_data function called.") 
     current_user_identity = get_jwt_identity() 
     user = users_collection.find_one({"username": current_user_identity})
 
@@ -394,8 +556,10 @@ def submit_daily_data():
         return jsonify({"msg": "User not found."}), 404
     
     records = request.get_json()
+    print(f"DEBUG: Received records for submission: {records}") 
 
     if not records or not isinstance(records, list) or not all(isinstance(rec, dict) for rec in records):
+        print(f"DEBUG: Invalid payload format for submission: {records}") 
         return jsonify({"msg": "Invalid data format. Expected an array of objects."}), 400
 
     try:
@@ -404,11 +568,10 @@ def submit_daily_data():
             "username": current_user_identity,
             "submission_timestamp": datetime.now(timezone.utc),
             "records": records,
-            "status": "pending" # Initial status is pending
+            "status": "pending" 
         }
-
-        # Insert the data into the pending collection
-        pending_data_collection.insert_one(data_to_insert)
+        print(f"DEBUG: Attempting to insert submission into submissions_collection: {data_to_insert}") 
+        submissions_collection.insert_one(data_to_insert)
         logger.info(f"User {current_user_identity} submitted data for approval. Request ID: {data_to_insert['_id']}")
         return jsonify({"msg": "Data submitted for approval successfully!", "requestId": str(data_to_insert['_id'])}), 201
 
@@ -418,7 +581,7 @@ def submit_daily_data():
 
 
 @app.route('/dashboard/download-excel', methods=['GET'])
-@jwt_required()
+@roles_required(['user', 'tester']) 
 def download_daily_excel():
     """
     Downloads an Excel file of all APPROVED data submitted by the authenticated user for the current day.
@@ -430,13 +593,20 @@ def download_daily_excel():
         return jsonify({"msg": "User not found."}), 404
 
     try:
-        # Get today's date in UTC and format it for consistent querying
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         
-        # Find APPROVED daily data for the current user and today's date
-        daily_entry = daily_data_collection.find_one({
+        # Find approved data for the current user for today
+        # Note: submissions might not always have date_key if it's based on submission_timestamp.
+        # For this to work, ensure 'date_key' is set consistently on submission/approval
+        # or filter by a date range on 'submission_timestamp'.
+        # I will assume 'date_key' is present for simplicity based on previous implementation.
+        daily_entry = submissions_collection.find_one({
             "user_id": str(user['_id']),
-            "date_key": today_start
+            "submission_timestamp": {
+                "$gte": today_start,
+                "$lt": today_start + timedelta(days=1)
+            },
+            "status": "approved"
         })
 
         if not daily_entry or not daily_entry.get('records'):
@@ -505,11 +675,11 @@ def download_daily_excel():
         return jsonify({"msg": f"Failed to generate daily report: {str(e)}"}), 500
 
 @app.route('/dashboard/search-approved-data', methods=['GET'])
-@jwt_required()
+@roles_required(['user', 'tester']) 
 def search_approved_data():
     """
-    User endpoint to search their APPROVED daily data.
-    Looks for the query_term in all string values of records.
+    User endpoint to search their APPROVED data.
+    Looks for the query_term in all string values of records within approved submissions.
     """
     current_user_identity = get_jwt_identity()
     user = users_collection.find_one({"username": current_user_identity})
@@ -523,51 +693,117 @@ def search_approved_data():
         return jsonify({"msg": "Search query is required."}), 400
 
     try:
-        # Find approved daily data for the current user across all days
-        # We need to iterate through all entries to search all records.
-        user_approved_entries = daily_data_collection.find({"user_id": str(user['_id'])})
+        # Find approved submissions for the current user
+        user_approved_submissions = submissions_collection.find({
+            "user_id": str(user['_id']),
+            "status": "approved"
+        })
         
         matching_records = []
-        for entry in user_approved_entries:
-            for record in entry.get('records', []):
-                # Search within each key-value pair of the record
+        for submission in user_approved_submissions:
+            for record in submission.get('records', []):
                 for key, value in record.items():
                     if isinstance(value, str) and query_term in value.lower():
                         matching_records.append(record)
-                        break # Found a match in this record, move to next record
+                        break 
         
         if not matching_records:
             return jsonify({"msg": "No matching approved data found."}), 404
         
-        # Convert ObjectId to string for JSON serialization if needed, though not strictly
-        # required as these are already sub-documents of daily_data_collection.
-        # But for consistency, let's ensure all values are primitives for display.
-        # For this context, records are already dicts, so no need for _id conversion here.
-
         return jsonify({"matching_records": matching_records}), 200
 
     except Exception as e:
         logger.error(f"Error searching approved data for user {current_user_identity}: {str(e)}")
         return jsonify({"msg": f"Failed to search approved data: {str(e)}"}), 500
 
-# --- Admin Endpoints (updated for approval workflow) ---
-@app.route('/admin/pending-requests', methods=['GET'])
-@jwt_required()
-def get_pending_requests():
+@app.route('/dashboard/expiring-items', methods=['GET'])
+@roles_required(['user', 'tester']) 
+def get_expiring_items():
     """
-    Admin endpoint to fetch all pending data requests.
-    Requires admin role.
+    User: Get items that are expiring soon for the current user from approved submissions.
+    Optional query parameter `days` specifies the notification threshold.
+    This now includes items that have expired recently (within `days` threshold) and items expiring soon.
     """
     current_user_identity = get_jwt_identity()
     user = users_collection.find_one({"username": current_user_identity})
 
-    if not user or user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
+    if not user:
+        return jsonify({"msg": "User not found."}), 404
 
     try:
-        pending_requests = list(pending_data_collection.find({"status": "pending"}))
+        days_threshold = int(request.args.get('days', 30)) 
+        if days_threshold < 0:
+            return jsonify({'error': 'Days threshold cannot be negative.'}), 400
+    except ValueError:
+        return jsonify({'error': 'Invalid days threshold. Must be an integer.'}), 400
+
+    # Define the date range for "expiring soon"
+    # This now includes items that expired up to `days_threshold` days ago
+    # and items that will expire up to `days_threshold` days from now.
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    past_limit = today_start - timedelta(days=days_threshold)
+    future_limit = today_start + timedelta(days=days_threshold) # Inclusive of the last day
+
+    logger.info(f"Checking expiring items for user {current_user_identity}: today={today_start.strftime('%d-%m-%Y')}, past_limit={past_limit.strftime('%d-%m-%Y')}, future_limit={future_limit.strftime('%d-%m-%Y')}")
+
+    try:
+        # Find approved submissions for the current user
+        user_approved_submissions = submissions_collection.find({
+            "user_id": str(user['_id']),
+            "status": "approved"
+        })
         
-        # Convert ObjectId to string and datetime objects to ISO format
+        found_submissions_count = 0
+        for submission in user_approved_submissions:
+            found_submissions_count += 1
+            logger.debug(f"Processing submission (ID: {str(submission.get('_id'))}) for user {current_user_identity}. Records count: {len(submission.get('records', []))}")
+
+            for record in submission.get('records', []):
+                expiry_date_str = record.get('expiry')
+                logger.debug(f"  Checking record: {record.get('Item', 'N/A')}, raw expiry: '{expiry_date_str}'")
+
+                if expiry_date_str:
+                    try:
+                        expiry_date = datetime.strptime(expiry_date_str, "%d-%m-%Y")
+                        logger.debug(f"    Parsed expiry date: {expiry_date.strftime('%d-%m-%Y')}")
+                        
+                        # Check if expiry_date falls within the defined past_limit and future_limit
+                        if expiry_date >= past_limit and expiry_date <= future_limit:
+                            expiring_records.append(record)
+                            logger.info(f"    Match found for {record.get('Item', 'N/A')}: Expiry {expiry_date.strftime('%d-%m-%Y')} is within [{past_limit.strftime('%d-%m-%Y')} - {future_limit.strftime('%d-%m-%Y')}]")
+                        else:
+                            logger.debug(f"    No match for {record.get('Item', 'N/A')}: Expiry {expiry_date.strftime('%d-%m-%Y')} is OUTSIDE [{past_limit.strftime('%d-%m-%Y')} - {future_limit.strftime('%d-%m-%Y')}]")
+                    except ValueError:
+                        logger.warning(f"Could not parse expiry date '{expiry_date_str}' for record: {record.get('Item', 'N/A')} of user {current_user_identity}. Ensure 'expiry' is in dd-mm-yyyy format. Skipping record.")
+                        continue
+                else:
+                    logger.debug(f"    Record {record.get('Item', 'N/A')} has no 'expiry' field or it's empty. Skipping.")
+
+        if found_submissions_count == 0:
+            logger.info(f"No approved submissions found for user {current_user_identity}.")
+        
+        if expiring_records:
+            return jsonify({'msg': f'{len(expiring_records)} items expiring soon.', 'expiring_items': expiring_records}), 200
+        else:
+            return jsonify({'msg': 'No items expiring soon found.'}), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching expiring items for user {current_user_identity}: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred while fetching expiring items.'}), 500
+
+
+# --- Admin Endpoints (updated for approval workflow and single collection) ---
+@app.route('/admin/pending-requests', methods=['GET'])
+@admin_required 
+def get_pending_requests():
+    """
+    Admin endpoint to fetch all pending data requests from submissions_collection.
+    Requires admin role.
+    """
+    current_user_identity = get_jwt_identity()
+    try:
+        pending_requests = list(submissions_collection.find({"status": "pending"}))
+        
         for req in pending_requests:
             req['_id'] = str(req['_id'])
             if 'submission_timestamp' in req and isinstance(req['submission_timestamp'], datetime):
@@ -580,69 +816,29 @@ def get_pending_requests():
 
 
 @app.route('/admin/approve-request/<request_id>', methods=['POST'])
-@jwt_required()
+@admin_required 
 def approve_request(request_id):
     """
     Admin endpoint to approve a pending data request.
-    Moves data from pending to daily_data_collection.
+    Updates submission status to "approved" in submissions_collection.
     """
     current_user_identity = get_jwt_identity()
-    admin_user = users_collection.find_one({"username": current_user_identity})
-
-    if not admin_user or admin_user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
 
     try:
-        # Find the pending request
-        pending_request = pending_data_collection.find_one({"_id": ObjectId(request_id), "status": "pending"})
-
-        if not pending_request:
-            return jsonify({"msg": "Pending request not found or already processed."}), 404
-
-        # Prepare data for insertion into daily_data_collection
-        user_id_from_request = pending_request['user_id']
-        username_from_request = pending_request['username']
-        records_to_approve = pending_request['records']
-        
-        # Get today's date in UTC and format it for consistent querying
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-
-        # Check if data already exists for this user and today in daily_data_collection
-        existing_daily_entry = daily_data_collection.find_one({
-            "user_id": user_id_from_request,
-            "date_key": today_start
-        })
-
-        if existing_daily_entry:
-            # If entry exists, append new records
-            daily_data_collection.update_one(
-                {"_id": existing_daily_entry["_id"]},
-                {"$push": {"records": {"$each": records_to_approve}}}
-            )
-            logger.info(f"Approved data appended to existing daily entry for user {username_from_request} on {today_start.date()}.")
-        else:
-            # If no entry for today, insert a new one
-            new_daily_entry = {
-                "user_id": user_id_from_request,
-                "username": username_from_request,
-                "timestamp": datetime.now(timezone.utc),
-                "date_key": today_start,
-                "records": records_to_approve
-            }
-            daily_data_collection.insert_one(new_daily_entry)
-            logger.info(f"New daily entry created for user {username_from_request} on {today_start.date()} with approved data.")
-
-        # Update the status of the request in pending_data_collection
-        pending_data_collection.update_one(
-            {"_id": ObjectId(request_id)},
+        result = submissions_collection.update_one(
+            {"_id": ObjectId(request_id), "status": "pending"},
             {"$set": {
                 "status": "approved",
                 "approved_by": current_user_identity,
                 "approval_timestamp": datetime.now(timezone.utc)
             }}
         )
-        logger.info(f"Admin {current_user_identity} approved request {request_id} from user {username_from_request}.")
-        return jsonify({"msg": "Request approved and data moved to daily collection."}), 200
+
+        if result.matched_count == 0:
+            return jsonify({"msg": "Pending request not found or already processed."}), 404
+        
+        logger.info(f"Admin {current_user_identity} approved request {request_id}.")
+        return jsonify({"msg": "Request approved!"}), 200
 
     except Exception as e:
         logger.error(f"Admin {current_user_identity} failed to approve request {request_id}: {str(e)}")
@@ -650,21 +846,16 @@ def approve_request(request_id):
 
 
 @app.route('/admin/reject-request/<request_id>', methods=['POST'])
-@jwt_required()
+@admin_required 
 def reject_request(request_id):
     """
     Admin endpoint to reject a pending data request.
-    Updates status to "rejected" in pending_data_collection.
+    Updates status to "rejected" in submissions_collection.
     """
     current_user_identity = get_jwt_identity()
-    admin_user = users_collection.find_one({"username": current_user_identity})
-
-    if not admin_user or admin_user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
 
     try:
-        # Update the status of the request in pending_data_collection
-        result = pending_data_collection.update_one(
+        result = submissions_collection.update_one(
             {"_id": ObjectId(request_id), "status": "pending"},
             {"$set": {
                 "status": "rejected",
@@ -685,30 +876,21 @@ def reject_request(request_id):
 
 
 @app.route('/admin/daily-data', methods=['GET'])
-@jwt_required()
+@admin_required 
 def get_all_daily_data():
     """
-    Admin endpoint to fetch all APPROVED daily data from all users.
+    Admin endpoint to fetch all APPROVED submissions from all users.
     Requires admin role.
     """
     current_user_identity = get_jwt_identity()
-    user = users_collection.find_one({"username": current_user_identity})
-
-    if not user or user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
 
     try:
-        # Fetch from daily_data_collection (which now holds approved data)
-        all_daily_data = list(daily_data_collection.find({}))
+        all_daily_data = list(submissions_collection.find({"status": "approved"}))
         
-        # Convert ObjectId to string for JSON serialization
         for entry in all_daily_data:
             entry['_id'] = str(entry['_id'])
-            # Convert datetime objects to ISO format strings for JSON
-            if 'timestamp' in entry and isinstance(entry['timestamp'], datetime):
-                entry['timestamp'] = entry['timestamp'].isoformat()
-            if 'date_key' in entry and isinstance(entry['date_key'], datetime):
-                entry['date_key'] = entry['date_key'].isoformat().split('T')[0] # Just date part
+            if 'submission_timestamp' in entry and isinstance(entry['submission_timestamp'], datetime):
+                entry['submission_timestamp'] = entry['submission_timestamp'].isoformat()
         
         return jsonify({"daily_data": all_daily_data}), 200
     except Exception as e:
@@ -716,47 +898,42 @@ def get_all_daily_data():
         return jsonify({"msg": f"Failed to retrieve all daily data: {str(e)}"}), 500
 
 @app.route('/admin/download-all-excel', methods=['GET'])
-@jwt_required()
+@admin_required 
 def download_all_daily_excel():
     """
-    Admin endpoint to download all APPROVED daily data from all users as a single Excel file.
+    Admin endpoint to download all APPROVED submissions from all users as a single Excel file.
     Requires admin role.
     """
     current_user_identity = get_jwt_identity()
-    user = users_collection.find_one({"username": current_user_identity})
-
-    if not user or user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
 
     try:
-        # Fetch from daily_data_collection (which now holds approved data)
-        all_daily_entries = list(daily_data_collection.find({}))
+        all_approved_submissions = list(submissions_collection.find({"status": "approved"}))
         
-        if not all_daily_entries:
+        if not all_approved_submissions:
             return jsonify({"msg": "No approved data available to download across all users."}), 404
 
-        # Flatten the data: each submitted record from any user becomes a row
         flattened_records = []
-        for entry in all_daily_entries:
-            user_id = entry['user_id'] # This is already a string from daily_data_collection
+        for entry in all_approved_submissions:
+            # Using submission_timestamp for date_key if it exists, otherwise current time.
+            # Using user_id directly from the submission document
             username = entry.get('username', 'N/A')
-            timestamp = entry.get('timestamp', datetime.now(timezone.utc)).isoformat()
-            date_key = entry.get('date_key', datetime.now(timezone.utc)).isoformat().split('T')[0]
+            timestamp = entry.get('submission_timestamp', datetime.now(timezone.utc)).isoformat()
+            date_key = entry.get('submission_timestamp', datetime.now(timezone.utc)).isoformat().split('T')[0]
+            submission_id = str(entry['_id']) # Use submission ID for clarity
 
             for record in entry.get('records', []):
                 flattened_record = {
+                    "Submission ID": submission_id,
                     "Date": date_key,
                     "Username": username,
-                    "User ID": user_id,
                     "Submission Timestamp": timestamp,
-                    **record # Spread the actual submitted data
+                    **record 
                 }
                 flattened_records.append(flattened_record)
         
         if not flattened_records:
             return jsonify({"msg": "No valid records to convert to Excel."}), 404
 
-        # Create DataFrame from the flattened records
         df = pd.DataFrame(flattened_records)
         excel_buffer = io.BytesIO()
         
@@ -768,7 +945,6 @@ def download_all_daily_excel():
             workbook = writer.book
             worksheet = writer.sheets['All Approved Data']
             
-            # Apply styling and auto-adjust column widths
             for column in worksheet.columns:
                 max_length = 0
                 column_letter = column[0].column_letter
@@ -814,27 +990,194 @@ def download_all_daily_excel():
         logger.error(f"Admin user {current_user_identity} failed to generate aggregated Excel report: {str(e)}")
         return jsonify({"msg": f"Failed to generate aggregated Excel report: {str(e)}"}), 500
 
-@app.route('/admin/clear-approved-data', methods=['POST'])
-@jwt_required()
-def clear_approved_data():
+@app.route('/admin/clear-all-data', methods=['POST'])
+@admin_required
+def clear_all_data():
     """
-    Admin endpoint to clear all approved daily data from the database.
+    Admin endpoint to clear all data from the submissions_collection.
     Requires admin role.
     """
     current_user_identity = get_jwt_identity()
-    admin_user = users_collection.find_one({"username": current_user_identity})
-
-    if not admin_user or admin_user.get('role') != 'admin':
-        return jsonify({"msg": "Unauthorized: Admin access required."}), 403
 
     try:
-        # Delete all documents from the daily_data_collection
-        result = daily_data_collection.delete_many({})
-        logger.info(f"Admin {current_user_identity} cleared {result.deleted_count} documents from daily_data_collection.")
-        return jsonify({"msg": f"Successfully cleared {result.deleted_count} approved data entries."}), 200
+        result = submissions_collection.delete_many({})
+        logger.info(f"Admin {current_user_identity} cleared {result.deleted_count} documents from submissions_collection.")
+        return jsonify({"msg": f"Successfully cleared {result.deleted_count} data entries from all submissions."}), 200
     except Exception as e:
-        logger.error(f"Admin {current_user_identity} failed to clear approved data: {str(e)}")
-        return jsonify({"msg": f"Failed to clear approved data: {str(e)}"}), 500
+        logger.error(f"Admin {current_user_identity} failed to clear all submissions data: {str(e)}")
+        return jsonify({"msg": f"Failed to clear all submissions data: {str(e)}"}), 500
+
+@app.route('/admin/send-expired-notifications', methods=['POST'])
+@admin_required
+def send_expired_notifications():
+    """
+    Admin endpoint to send email notifications for expired/expiring items.
+    Can target a specific user or all users.
+    Payload: {"target_username": "user_to_notify" | "all", "days_threshold": int}
+    This now includes items that have expired recently (within `days` threshold) and items expiring soon.
+    """
+    current_user_identity = get_jwt_identity()
+    data = request.get_json()
+    
+    target_username = data.get('target_username', 'all')
+    try:
+        days_threshold = int(data.get('days_threshold', 30))
+        if days_threshold < 0:
+            return jsonify({'error': 'Days threshold cannot be negative.'}), 400
+    except ValueError:
+        return jsonify({'error': 'Invalid days threshold. Must be an integer.'}), 400
+
+    # Define the date range for "expiring soon"
+    # This now includes items that expired up to `days_threshold` days ago
+    # and items that will expire up to `days_threshold` days from now.
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    past_limit = today_start - timedelta(days=days_threshold)
+    future_limit = today_start + timedelta(days=days_threshold) # Inclusive of the last day
+
+    logger.info(f"Sending expiry notifications (Admin: {current_user_identity}): target_username={target_username}, days_threshold={days_threshold}. Date range: [{past_limit.strftime('%d-%m-%Y')} - {future_limit.strftime('%d-%m-%Y')}]")
+    
+    users_to_notify = []
+    if target_username == 'all':
+        users_to_notify = list(users_collection.find({}))
+        logger.info(f"Found {len(users_to_notify)} users for 'all' notification.")
+    else:
+        user = users_collection.find_one({"username": target_username})
+        if user:
+            users_to_notify.append(user)
+            logger.info(f"Found specific user '{target_username}' for notification.")
+        else:
+            logger.warning(f"Target user '{target_username}' not found.")
+            return jsonify({"msg": f"User '{target_username}' not found."}), 404
+
+    successful_sends = []
+    failed_sends = []
+
+    for user in users_to_notify:
+        user_email = user.get('email')
+        logger.info(f"Processing user {user['username']} (Email: {user_email if user_email else 'N/A'})")
+
+        if not user_email:
+            logger.warning(f"Skipping email for user {user['username']}: No email address found.")
+            failed_sends.append(f"User {user['username']} (no email)")
+            continue
+
+        expiring_records = []
+        try:
+            user_approved_submissions = submissions_collection.find({
+                "user_id": str(user['_id']),
+                "status": "approved"
+            })
+            
+            found_user_submissions = False
+            for submission in user_approved_submissions:
+                found_user_submissions = True
+                logger.debug(f"  Fetching records from submission ID: {str(submission.get('_id'))}")
+                for record in submission.get('records', []):
+                    expiry_date_str = record.get('expiry')
+                    logger.debug(f"    Record: {record.get('Item', 'N/A')}, Raw expiry: '{expiry_date_str}'")
+
+                    if expiry_date_str:
+                        try:
+                            expiry_date = datetime.strptime(expiry_date_str, "%d-%m-%Y")
+                            logger.debug(f"      Parsed expiry date: {expiry_date.strftime('%d-%m-%Y')}")
+                            
+                            if expiry_date >= past_limit and expiry_date <= future_limit:
+                                expiring_records.append(record)
+                                logger.info(f"      MATCH: Item '{record.get('Item', 'N/A')}' expiry {expiry_date.strftime('%d-%m-%Y')} is within range.")
+                            else:
+                                logger.debug(f"      NO MATCH: Item '{record.get('Item', 'N/A')}' expiry {expiry_date.strftime('%d-%m-%Y')} is OUTSIDE range.")
+                        except ValueError:
+                            logger.warning(f"      Could not parse expiry date '{expiry_date_str}' for record: {record.get('Item', 'N/A')} of user {user['username']}. Ensure 'expiry' is in dd-mm-yyyy format. Skipping record.")
+                            continue
+                    else:
+                        logger.debug(f"    Record {record.get('Item', 'N/A')} has no 'expiry' field. Skipping expiry check for this record.")
+            
+            if not found_user_submissions:
+                logger.info(f"No approved submissions found for user {user['username']}.")
+
+        except Exception as e:
+            logger.error(f"Error fetching expiring items for user {user['username']}: {str(e)}")
+            failed_sends.append(f"User {user['username']} (data fetch error)")
+            continue
+
+        if expiring_records:
+            logger.info(f"For user {user['username']}, collected {len(expiring_records)} expiring records: {expiring_records}") # NEW LOG
+            subject = f"Urgent: Expiring/Expired Items Alert for {user['username']}"
+            body_lines = [f"Dear {user['username']},\n",
+                          f"The following items are expiring or have recently expired within the last {days_threshold} days or will expire in the next {days_threshold} days:\n"]
+            for item in expiring_records:
+                # Dynamically construct item details for email body
+                item_details = ", ".join([f"{k}: {v}" for k, v in item.items()])
+                body_lines.append(f"- {item_details}")
+            body_lines.append("\nPlease take action as necessary.")
+            body_lines.append("\nBest regards,\nYour Excel Creator Team")
+            
+            email_body = "\n".join(body_lines)
+            
+            logger.info(f"Email body for {user['username']}:\n{email_body}") # NEW LOG
+            
+            if send_email_notification(user_email, subject, email_body):
+                successful_sends.append(user['username'])
+            else:
+                failed_sends.append(user['username'])
+        else:
+            logger.info(f"No expiring/recently expired items for user {user['username']}. Skipping email notification.")
+
+    response_msg = {
+        "msg": "Email notification process completed.",
+        "successful_sends": successful_sends,
+        "failed_sends": failed_sends
+    }
+    return jsonify(response_msg), 200
+
+# --- NEW ADMIN ENDPOINT: Search User Submissions ---
+@app.route('/admin/search-user-submissions', methods=['GET'])
+@admin_required
+def search_user_submissions():
+    """
+    Admin endpoint to fetch all submissions (pending, approved, rejected) for a specific user.
+    Requires admin role.
+    Query parameter: 'username'
+    """
+    current_user_identity = get_jwt_identity()
+    target_username = request.args.get('username')
+
+    if not target_username:
+        logger.warning(f"Admin {current_user_identity} attempted user search without providing a username.")
+        return jsonify({"msg": "Username query parameter is required."}), 400
+
+    try:
+        # Find submissions directly by username in the submissions_collection
+        # This assumes the 'username' field is always present in submissions, which it should be.
+        user_submissions_cursor = submissions_collection.find({"username": target_username})
+        
+        user_submissions = []
+        for submission in user_submissions_cursor:
+            submission['_id'] = str(submission['_id']) # Convert ObjectId to string
+            # Convert datetime objects to ISO format strings for JSON serialization
+            if 'submission_timestamp' in submission and isinstance(submission['submission_timestamp'], datetime):
+                submission['submission_timestamp'] = submission['submission_timestamp'].isoformat()
+            if 'approval_timestamp' in submission and isinstance(submission['approval_timestamp'], datetime):
+                submission['approval_timestamp'] = submission['approval_timestamp'].isoformat()
+            if 'rejection_timestamp' in submission and isinstance(submission['rejection_timestamp'], datetime):
+                submission['rejection_timestamp'] = submission['rejection_timestamp'].isoformat()
+            
+            # Ensure records are treated as lists of dicts
+            if 'records' in submission and not isinstance(submission['records'], list):
+                submission['records'] = [] # Default to empty list if not valid
+            
+            user_submissions.append(submission)
+        
+        if not user_submissions:
+            logger.info(f"Admin {current_user_identity}: No submissions found for user '{target_username}'.")
+            return jsonify({"msg": f"No submissions found for user '{target_username}'."}), 404
+        
+        logger.info(f"Admin {current_user_identity}: Found {len(user_submissions)} submissions for user '{target_username}'.")
+        return jsonify({"user_submissions": user_submissions}), 200
+
+    except Exception as e:
+        logger.error(f"Admin {current_user_identity} failed to search submissions for user '{target_username}': {str(e)}")
+        return jsonify({"msg": f"Failed to retrieve data for user '{target_username}': {str(e)}"}), 500
 
 
 if __name__ == '__main__':

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { API_BASE_URL } from '../config/config';
+// Adjusted import path: Assuming 'config' is one level up from this component's directory.
+// For example, if RegisterForm.jsx is in 'src/components/auth/' and config.js is in 'src/config/',
+// you might need to go up two levels. If RegisterForm.jsx is in 'src/auth/' and config.js in 'src/config/',
+// you would need to go up one level. This path assumes the latter.
+import { API_BASE_URL } from '../config/config'; 
 
 // Register Form Component
 const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  // New state for role during registration (optional, for simple admin creation)
-  const [role, setRole] = useState('user');
+  const [email, setEmail] = useState(''); // New state for email to store the user's email input
+  const [role, setRole] = useState('user'); // Default role is 'user'
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +23,8 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, role }), // Include role in registration
+        // IMPORTANT: Ensure 'email' is included in the JSON body sent to the backend
+        body: JSON.stringify({ username, password, email, role }), 
       });
 
       const data = await response.json();
@@ -65,7 +70,24 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
           required
         />
       </div>
-      {/* Optional role selection for registration. In a real app, this might be controlled on backend or admin panel */}
+      
+      {/* THIS IS THE EMAIL INPUT FIELD */}
+      <div>
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-email">
+          Email
+        </label>
+        <input
+          type="email"
+          id="new-email"
+          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+          placeholder="your.email@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required // Making email a required field for registration
+        />
+      </div>
+      
+      {/* Optional role selection for registration */}
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-role">
           Role
@@ -78,6 +100,7 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
         >
           <option value="user">User</option>
           <option value="admin">Admin</option>
+          <option value="tester">Tester</option> {/* Added Tester role option */}
         </select>
       </div>
       <button
