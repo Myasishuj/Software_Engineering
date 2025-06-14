@@ -9,3 +9,4 @@ flask-pymongo
 werkzeug
 pandas
 openpyxl
+python-barcode

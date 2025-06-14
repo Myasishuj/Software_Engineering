@@ -1,5 +1,3 @@
-# setup.ps1
-
 Write-Host "`nStarting full setup..."
 
 # === Backend Setup ===
@@ -19,7 +17,7 @@ Write-Host "Activating virtual environment..."
 & .\venv\Scripts\Activate.ps1
 
 # Install dependencies
-Write-Host "Installing Python dependencies..."
+Write-Host "Installing Python dependencies (including python-barcode)..."
 pip install -r requirements.txt
 
 # Create .env if missing
@@ -36,13 +34,13 @@ cd ..
 Write-Host "`nSetting up React frontend..."
 cd client
 
-# Install npm dependencies
-Write-Host "Installing npm packages..."
+# Install npm dependencies (including jsbarcode if in package.json)
+Write-Host "Installing npm packages (ensure jsbarcode is listed in package.json)..."
 npm install
 
 cd ..
 
 # === DONE ===
 Write-Host "`nSetup complete."
-Write-Host "To run backend:   cd server; .\venv\Scripts\Activate.ps1; python main.py"
-Write-Host "To run frontend:  cd client; npm run dev"
+Write-Host "To run backend:    cd server; .\venv\Scripts\Activate.ps1; python main.py"
+Write-Host "To run frontend:   cd client; npm run dev"

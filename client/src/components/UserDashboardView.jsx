@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff, Search, AlertCircle } from 'lucide-react';
-import JsBarcode from 'jsbarcode';
+import JsBarcode from 'jsbarcode'; // Using direct npm import
 
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
@@ -29,50 +29,21 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   const [expiringItems, setExpiringItems] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false); // State to control visibility of notification details
 
-  // Effect to load JsBarcode library dynamically from local public folder
+  // Effect to trigger client-side barcode generation when barcodeResult changes AND
+  // it doesn't have a backend SVG AND the canvas ref is ready.
   useEffect(() => {
-    const scriptId = 'jsbarcode-script';
-    // Only attempt to load if the script is not already in the DOM and JsBarcode is not globally available
-    if (!document.getElementById(scriptId) && typeof window.JsBarcode === 'undefined') {
-      console.log('Attempting to load JsBarcode script from local path...');
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = '/JsBarcode.min.js'; // Path relative to public folder
-      script.onload = () => {
-        console.log('JsBarcode loaded successfully from local path!');
-        // Trigger explicit barcode generation if a result was already present
-        if (barcodeResult && barcodeCanvasRef.current) {
-          generateAndDisplayBarcode(barcodeResult);
-        }
-      };
-      script.onerror = (e) => {
-        console.error('Failed to load JsBarcode script from local path. This could be due to incorrect file placement or other issues.', e);
-        setMessage('Failed to load barcode generator script. Ensure "JsBarcode.min.js" is in your public/ folder.');
-        setBarcodeErrorMessage('Barcode generator failed to load.');
-      };
-      document.body.appendChild(script);
-    } else if (typeof window.JsBarcode !== 'undefined') {
-      console.log('JsBarcode script already loaded (or found globally).');
-    }
-
-    // Cleanup function to remove the script if component unmounts (optional, but good practice)
-    return () => {
-      const existingScript = document.getElementById(scriptId);
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
-  }, []); // Empty dependency array means this effect runs once on mount
-
-  // Effect to generate and display barcode when barcodeResult or canvas ref changes AND JsBarcode is loaded
-  useEffect(() => {
-    console.log('Barcode useEffect triggered. barcodeResult:', barcodeResult, 'canvasRef.current:', barcodeCanvasRef.current, 'JsBarcode available:', typeof window.JsBarcode !== 'undefined');
-    if (barcodeResult && barcodeCanvasRef.current && typeof window.JsBarcode !== 'undefined') {
+    console.log('Client-side barcode generation useEffect triggered. Barcode Result:', barcodeResult);
+    // Only attempt client-side generation if:
+    // 1. A barcodeResult exists
+    // 2. It DOES NOT contain a backend-generated barcode_svg_base64
+    // 3. The canvas ref is connected to the DOM
+    if (barcodeResult && !barcodeResult.barcode_svg_base64 && barcodeCanvasRef.current) {
+      console.log('Attempting client-side barcode generation for:', barcodeResult);
       generateAndDisplayBarcode(barcodeResult);
-    } else if (barcodeResult && !barcodeCanvasRef.current) {
-        console.warn('Barcode result is available, but canvas ref is not yet connected to DOM.');
-    } else if (barcodeResult && typeof window.JsBarcode === 'undefined') {
-        console.warn('Barcode result is available, but JsBarcode library is not yet loaded.');
+    } else if (barcodeResult && barcodeResult.barcode_svg_base64) {
+      console.log('Backend-generated barcode SVG present. Skipping client-side generation.');
+    } else {
+      console.log('Client-side barcode generation conditions not met yet or no result.');
     }
   }, [barcodeResult, barcodeCanvasRef.current]); // Depend on barcodeResult and barcodeCanvasRef.current
 
@@ -106,53 +77,85 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
     return () => clearInterval(intervalId); // Cleanup interval on component unmount
   }, [authToken]); // Refetch when authToken changes
 
-  // Function to generate and display barcode on the canvas
+  // Helper to derive an 11-digit numeric string for UPC from record.pid
+  // This mirrors the backend's logic for client-side generation.
+  const getUpcValueFromRecord = (record) => {
+    if (!record || !record.pid) {
+      // Fallback to a default demo UPC if no PID
+      return "01234567890";
+    }
+
+    const pid_str = String(record.pid);
+    let numeric_pid = '';
+    // Extract only digits from pid_str
+    for (let i = 0; i < pid_str.length; i++) {
+        if (pid_str[i] >= '0' && pid_str[i] <= '9') {
+            numeric_pid += pid_str[i];
+        }
+    }
+
+    if (numeric_pid.length >= 11) {
+      return numeric_pid.substring(0, 11); // Take the first 11 digits
+    } else if (numeric_pid.length > 0) {
+      return numeric_pid.padStart(11, '0'); // Pad with leading zeros
+    } else {
+      // If pid has no digits, generate a hash-based demo UPC (consistent for same input)
+      let hash = 0;
+      for (let i = 0; i < pid_str.length; i++) {
+        const char = pid_str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+      }
+      const demoUpc = String(Math.abs(hash)).padStart(11, '0').substring(0, 11);
+      console.warn(`PID '${pid_str}' not suitable for UPC. Generated demo UPC: ${demoUpc}`);
+      return demoUpc;
+    }
+  };
+
+  // Function to generate and display barcode on the canvas (client-side fallback logic)
   const generateAndDisplayBarcode = (record) => {
-    // Ensure JsBarcode library is loaded before attempting to use it
-    if (!barcodeCanvasRef.current || typeof window.JsBarcode === 'undefined') {
-      console.warn('Barcode canvas ref or JsBarcode library not available for generation. Aborting barcode draw.');
-      setBarcodeErrorMessage('Barcode generator is not loaded. Please try refreshing or check your network.');
+    // If backend already provided an SVG barcode, do not attempt client-side generation.
+    if (record && record.barcode_svg_base64) {
+      console.log('Backend SVG barcode already present. Skipping client-side JsBarcode generation.');
       return;
     }
 
-    let barcodeValue = '';
-    // Prioritize 'pid' or 'pname' if available, otherwise take the first available string value
-    if (record && record['pid']) {
-      barcodeValue = String(record['pid']);
-    } else if (record && record['pname']) {
-        barcodeValue = String(record['pname']);
-    } else if (record) {
-      // Find the first string value in the record
-      for (const key in record) {
-        if (typeof record[key] === 'string' && record[key].trim() !== '') {
-          barcodeValue = record[key];
-          break;
-        }
-      }
+    // Ensure barcodeCanvasRef is connected
+    if (!barcodeCanvasRef.current) {
+      console.warn('Barcode canvas ref not available for client-side generation. Aborting barcode draw.');
+      setBarcodeErrorMessage('Barcode canvas not ready. Please try again.');
+      return;
     }
 
-    console.log('Attempting to draw barcode with value:', barcodeValue);
+    // Get the 11-digit value for UPC
+    const upcInput = getUpcValueFromRecord(record);
+    
+    console.log('Client-side: Attempting to draw UPC barcode with value:', upcInput);
 
-    if (barcodeValue.trim()) { // Ensure barcodeValue is not just empty or whitespace
+    if (upcInput.length === 11 && /^\d+$/.test(upcInput)) { 
       try {
-        window.JsBarcode(barcodeCanvasRef.current, barcodeValue, { // Use window.JsBarcode
-          format: "CODE128", // Common barcode format
-          displayValue: true, // Show the value below the barcode
-          height: 80,
-          width: 2,
-          margin: 10,
+        // JsBarcode will automatically calculate the 12th checksum digit for UPC-A
+        JsBarcode(barcodeCanvasRef.current, upcInput, {
+          format: "UPC", // Changed format to UPC
+          displayValue: true, 
+          // JsBarcode automatically displays the full 12-digit code for UPC format.
+          height: 150, // Increased height for client-side barcode
+          width: 3, // Increased bar width
+          margin: 15, // Increased margin
           background: "#ffffff",
-          lineColor: "#333333"
+          lineColor: "#333333",
+          font: "monospace", 
+          fontSize: 16 
         });
-        setBarcodeErrorMessage(''); // Clear any previous barcode errors
-        console.log('Barcode drawn successfully!');
+        setBarcodeErrorMessage(''); 
+        console.log('Client-side: UPC barcode drawn successfully!');
       } catch (error) {
-        console.error("Error drawing barcode on canvas:", error);
-        setBarcodeErrorMessage("Failed to generate barcode: " + error.message);
+        console.error("Client-side: Error drawing UPC barcode on canvas:", error);
+        setBarcodeErrorMessage("Failed to generate barcode (client-side): " + error.message);
       }
     } else {
-      console.warn('Barcode value is empty or contains only whitespace. Cannot generate barcode.');
-      setBarcodeErrorMessage('No suitable string value found in the record to generate a barcode or the value is empty.');
+      console.warn('Client-side: Invalid UPC input. Must be 11 numeric digits:', upcInput);
+      setBarcodeErrorMessage('Invalid UPC input for client-side generation. Must be 11 numeric digits.');
     }
   };
 
@@ -186,7 +189,6 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
       }, {});
     
     // Wrap in an array if there are valid entries, as expected by the backend
-    // The backend expects an array of objects, even if there's only one record.
     return Object.keys(validEntries).length > 0 ? [validEntries] : [];
   };
 
@@ -218,26 +220,24 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
   // Common submission logic for both form and JSON input
   const submitData = async (records) => {
-    setIsLoading(true); // Show global loading indicator
-    setMessage(''); // Clear previous messages
+    setIsLoading(true); 
+    setMessage(''); 
 
     try {
       const response = await fetch(`${API_BASE_URL}/dashboard/submit-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}` // Include JWT for authentication
+          'Authorization': `Bearer ${authToken}` 
         },
-        body: JSON.stringify(records), // Send data as JSON string
+        body: JSON.stringify(records), 
       });
 
-      const data = await response.json(); // Parse response JSON
+      const data = await response.json(); 
 
       if (response.ok) {
-        setMessage('Data submitted successfully and is pending admin approval!'); // Updated message
-        // Reset form or JSON input after successful submission
+        setMessage('Data submitted successfully and is pending admin approval!'); 
         if (submissionMode === 'form') {
-          // Reset to initial example entries
           setDataEntries([
             { key: 'pid', value: '' },
             { key: 'pname', value: '' },
@@ -247,38 +247,37 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
             { key: 'type', value: '' }
           ]);
         } else {
-          setJsonInput(''); // Clear JSON input
+          setJsonInput(''); 
         }
       } else {
-        setMessage(data.msg || 'Failed to submit data.'); // Display error message from backend
+        setMessage(data.msg || 'Failed to submit data.'); 
       }
     } catch (error) {
       console.error('Data submission error:', error);
-      setMessage('Network error. Please try again.'); // Generic network error message
+      setMessage('Network error. Please try again.'); 
     } finally {
-      setIsLoading(false); // Hide global loading indicator
+      setIsLoading(false); 
     }
   };
 
-  // Handle downloading Excel file for the user's approved daily data
+  // Handle downloading Excel file for approved daily data (user or all, based on backend config)
   const handleDownloadExcel = async () => {
-    setIsLoading(true); // Show global loading indicator
-    setMessage(''); // Clear previous messages
+    setIsLoading(true); 
+    setMessage(''); 
 
     try {
       const response = await fetch(`${API_BASE_URL}/dashboard/download-excel`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${authToken}` // Include JWT for authentication
+          'Authorization': `Bearer ${authToken}` 
         },
       });
 
       if (response.ok) {
-        const blob = await response.blob(); // Get file as a blob
+        const blob = await response.blob(); 
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = 'daily_data.xlsx'; // Default filename
+        let filename = 'daily_data.xlsx'; 
 
-        // Extract filename from Content-Disposition header if available
         if (contentDisposition && contentDisposition.includes('filename=')) {
           const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
           if (filenameMatch && filenameMatch[1]) {
@@ -286,34 +285,33 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
           }
         }
 
-        // Create a temporary URL and download link
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
-        a.click(); // Programmatically click the link to trigger download
-        a.remove(); // Clean up the temporary link
-        window.URL.revokeObjectURL(url); // Release the object URL
+        a.click(); 
+        a.remove(); 
+        window.URL.revokeObjectURL(url); 
         setMessage('Excel file downloaded successfully!');
       } else {
-        const errorData = await response.json(); // Get error message from backend
+        const errorData = await response.json(); 
         setMessage(errorData.msg || 'Failed to download Excel file.');
       }
     } catch (error) {
       console.error('Excel download error:', error);
       setMessage('Network error during Excel download. Please try again.');
     } finally {
-      setIsLoading(false); // Hide global loading indicator
+      setIsLoading(false); 
     }
   };
 
   // Handle searching for barcode data
   const handleSearchForBarcode = async () => {
-    setIsLoading(true); // Use global loading indicator
-    setBarcodeResult(null); // Clear previous result before new search
+    setIsLoading(true); 
+    setBarcodeResult(null); 
     setBarcodeErrorMessage('');
-    setMessage(''); // Clear general messages
+    setMessage(''); 
 
     if (!barcodeSearchQuery.trim()) {
       setBarcodeErrorMessage('Please enter a search term for the barcode.');
@@ -333,20 +331,21 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
       if (response.ok && data.matching_records && data.matching_records.length > 0) {
         const firstMatch = data.matching_records[0]; // Take the first matching record
-        setBarcodeResult(firstMatch); // This will trigger the useEffect for drawing
-        setMessage('Matching record found and barcode generated!');
+        setBarcodeResult(firstMatch); // Store the entire record, including barcode_svg_base64
+        setMessage('Matching record found and barcode ready!');
+        // The useEffect will handle rendering the barcode (either SVG or client-side)
       } else {
-        setBarcodeResult(null); // Clear previous barcode result
+        setBarcodeResult(null); 
         setBarcodeErrorMessage(data.msg || 'No approved data found matching your search term.');
         setMessage('No approved data found matching your search term.');
       }
     } catch (error) {
       console.error('Error searching for barcode data:', error);
-      setBarcodeResult(null); // Clear previous barcode result
+      setBarcodeResult(null); 
       setBarcodeErrorMessage('Network error during barcode search. Please try again.');
       setMessage('Network error during barcode search.');
     } finally {
-      setIsLoading(false); // Hide global loading indicator
+      setIsLoading(false); 
     }
   };
 
@@ -454,7 +453,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                   <div className="flex-1">
                     <input
                       type="text"
-                      placeholder={entry.placeholder || "Value (e.g., apple, laptop, John)"} // Use entry.placeholder
+                      placeholder={entry.placeholder || "Value (e.g., apple, laptop, John)"} 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       value={entry.value}
                       onChange={(e) => updateEntry(index, 'value', e.target.value)}
@@ -463,7 +462,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                   <button
                     type="button"
                     onClick={() => removeEntry(index)}
-                    disabled={dataEntries.length === 1} // Disable remove button if only one entry
+                    disabled={dataEntries.length === 1} 
                     className="p-2 text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -542,7 +541,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Generate Barcode from Approved Data</h2>
         <p className="text-gray-700 mb-4">
-          Enter a term (e.g., a product ID or name) to search your approved data and generate a barcode.
+          Enter a term (e.g., a product ID or name) to search approved data and view its barcode.
         </p>
         <div className="flex space-x-2 mb-4">
           <input
@@ -568,14 +567,38 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         )}
         {barcodeResult && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-            <h4 className="text-lg font-semibold text-gray-800 mb-2">Generated Barcode:</h4>
-            {/* Explicit width and height for canvas to ensure JsBarcode has a drawing surface */}
-            <canvas ref={barcodeCanvasRef} width="300" height="100" className="mx-auto border border-gray-300 bg-white rounded-md"></canvas>
-            <p className="text-sm text-gray-600 mt-2">
-              Barcode value: <span className="font-mono">{barcodeResult['pid'] || barcodeResult['pname'] || Object.values(barcodeResult).find(val => typeof val === 'string' && val.trim() !== '') || 'N/A'}</span>
+            {/* Added mb-4 to push the barcode down from the title */}
+            <h4 className="text-lg font-semibold text-gray-800 mb-4">
+              Generated UPC Barcode for: {barcodeResult['pid'] || barcodeResult['pname'] || 'N/A'}
+            </h4>
+            {barcodeResult.barcode_svg_base64 ? (
+              // Display backend-generated SVG barcode
+              <img
+                src={`data:image/svg+xml;base64,${barcodeResult.barcode_svg_base64}`}
+                alt={`UPC Barcode for ${barcodeResult.pid || barcodeResult.pname || 'item'}`}
+                className="mx-auto h-48 w-full object-contain px-4" // INCREASED HEIGHT (h-48), full width, added horizontal padding
+              />
+            ) : (
+              // Fallback to client-side JsBarcode if backend didn't provide SVG
+              // Increased canvas width and height attributes for UPC aspect ratio
+              <canvas ref={barcodeCanvasRef} width="500" height="200" className="mx-auto border border-gray-300 bg-white rounded-md"></canvas>
+            )}
+            
+            {/* Explicitly show the encoded barcode data/number */}
+            <p className="text-lg font-bold text-gray-800 mt-4 break-words">
+              Encoded UPC Value: <span className="font-mono text-base bg-gray-200 p-2 rounded-md inline-block">{barcodeResult.encoded_barcode_value || getUpcValueFromRecord(barcodeResult)}</span>
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              (Based on the first suitable string value from the matched record: priority given to 'pid', then 'pname', then any other string field. For more control, please refine your search.)
+
+            <p className="text-sm text-gray-600 mt-2">
+              Full Record Data: <span className="font-mono text-xs">
+                {JSON.stringify(barcodeResult, null, 2).length > 200 ? 
+                 JSON.stringify(barcodeResult, null, 2).substring(0, 200) + '...' : 
+                 JSON.stringify(barcodeResult, null, 2)
+                }
+              </span>
+            </p>
+            <p className="text-xs text-red-600 mt-1">
+              **Important:** UPC barcodes require exactly 12 numeric digits. For real industrial use, consider adding a dedicated 'upc_code' field to your data.
             </p>
           </div>
         )}
