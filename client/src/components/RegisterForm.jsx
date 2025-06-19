@@ -46,8 +46,9 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-username">
-          Username
+          New Username
         </label>
+        <div class="box_divider"/>
         <input
           type="text"
           id="new-username"
@@ -57,10 +58,12 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
           required
         />
       </div>
+      <div class="divider"/>
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-password">
-          Password
+          New Password
         </label>
+        <div class="box_divider"/>
         <input
           type="password"
           id="new-password"
@@ -72,10 +75,12 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
       </div>
       
       {/* THIS IS THE EMAIL INPUT FIELD */}
+      <div class="divider"/>
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-email">
           Email
         </label>
+        <div class="box_divider3"/>
         <input
           type="email"
           id="new-email"
@@ -88,10 +93,12 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
       </div>
       
       {/* Optional role selection for registration */}
+      <div class="divider"/>
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-role">
           Role
         </label>
+        <div class="box_divider3"/>
         <select
           id="new-role"
           className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
@@ -103,11 +110,9 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
           <option value="tester">Tester</option> {/* Added Tester role option */}
         </select>
       </div>
-      <button
-        type="submit"
-        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
-      >
-        Register
+      <button class="btn neon-pulse"
+        type="submit">
+        <span>Register</span>
       </button>
     </form>
   );

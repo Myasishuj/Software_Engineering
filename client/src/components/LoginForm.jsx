@@ -45,6 +45,7 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
           Username
         </label>
+        <div class="box_divider"/>
         <input
           type="text"
           id="username"
@@ -54,10 +55,12 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
           required
         />
       </div>
+      <div class="divider"/>
       <div>
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
           Password
         </label>
+        <div class="box_divider"/>
         <input
           type="password"
           id="password"
@@ -67,11 +70,9 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
           required
         />
       </div>
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
-      >
-        Log In
+      <button class="btn2 neon-pulse"
+        type="submit">
+        <span>Log In</span>
       </button>
     </form>
   );

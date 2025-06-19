@@ -175,7 +175,7 @@ const ExcelCreatorApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="h-screen">
         {/* Header */}
         <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border border-gray-200">
           <div className="flex items-center justify-between">
