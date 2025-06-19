@@ -41,57 +41,42 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => 
   };
 
   return (
-  <div className="login-fullscreen">
-    <div className="box">
-      <div className="form">
-        <h4>Log In</h4>
-        <form onSubmit={handleSubmit}>
-          <div className="inputBox">
-            <input
-              type="text"
-              id="username"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <span>Username</span>
-            <i></i>
-          </div>
-
-          <div className="inputBox">
-            <input
-              type="password"
-              id="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <span>Password</span>
-            <i></i>
-          </div>
-
-          <div className="loglinks">
-            <a href="#">Forgot Password</a>
-          </div>
-
-          <button type="submit" className="submit-btn">
-            Log In
-          </button>
-          <p className="toggle-auth-text">
-            Don't have an account?{' '}
-          <button
-            type="button"
-            onClick={onSwitchView}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-  >
-            Register here.
-  </button>
-</p>
-        </form>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+          Username
+        </label>
+        <div class="box_divider"/>
+        <input
+          type="text"
+          id="username"
+          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
       </div>
-    </div>
-  </div>
-);
+      <div class="divider"/>
+      <div>
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+          Password
+        </label>
+        <div class="box_divider"/>
+        <input
+          type="password"
+          id="password"
+          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <button class="btn2 neon-pulse"
+        type="submit">
+        <span>Log In</span>
+      </button>
+    </form>
+  );
 };
 
 export default LoginForm;
