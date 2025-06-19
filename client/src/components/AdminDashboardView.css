@@ -1,0 +1,346 @@
+/* Layout */
+.admin-dashboard {
+  width: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  padding: 2rem;
+  background-color: black;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  box-sizing: border-box;
+}
+
+.admin-header {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #1e3a8a;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Buttons */
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.admin-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.refresh-button { background-color: #2563eb; }
+.refresh-button:hover { background-color: #1e40af; }
+
+.download-button { background-color: #0d9488; }
+.download-button:hover { background-color: #0f766e; }
+
+.delete-button { background-color: #b91c1c; }
+.delete-button:hover { background-color: #991b1b; }
+
+.logout-button { background-color: #6b7280; }
+.logout-button:hover { background-color: #4b5563; }
+
+/* Utility */
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}
+
+/* Admin Welcome */
+.admin-welcome {
+  display: flex;
+  align-items: center;
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+  color: #92400e;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(75, 85, 99, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #b91c1c;
+  margin-bottom: 0.75rem;
+}
+
+.modal-message {
+  color: #f9fafb;
+  margin-bottom: 1.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.confirm-button {
+  background: #dc2626;
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+}
+
+.cancel-button {
+  background: #e5e7eb;
+  color: #111827;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+}
+
+/* Search Section */
+.search-box {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.search-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.input-field {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+.search-button {
+  background-color: #8b5cf6;
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-button:hover {
+  background-color: #7c3aed;
+}
+
+.results-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f9fafb;
+  margin-bottom: 1rem;
+}
+
+.result-card {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  margin-bottom: 1rem;
+}
+
+/* Notification Section */
+.notification-section {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e5e7eb;
+}
+
+.notification-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  color: #f9fafb;
+  font-size: 0.875rem;
+}
+
+.notification-button {
+  background-color: #6366f1;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-button:hover {
+  background-color: #4f46e5;
+}
+
+.notification-status.success {
+  background-color: #dcfce7;
+  color: #15803d;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+.notification-status.error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* Table */
+.data-table th,
+.data-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #f9fafb;
+}
+
+.data-table thead {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+.status-approved {
+  color: #16a34a;
+  font-weight: bold;
+}
+.status-pending {
+  color: #f59e0b;
+  font-weight: bold;
+}
+.status-rejected {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+/* Extra */
+.toggle-json-button {
+  font-size: 0.875rem;
+  color: #7c3aed;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-json-button:hover {
+  color: #5b21b6;
+}
+
+.json-viewer {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: white;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-description {
+  font-size: 0.95rem;
+  color: #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.no-results {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin-top: 1rem;
+}

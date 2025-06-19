@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import './LoginForm.css'; // Import CSS for styling
 
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
 // Login Form Component
-const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
+const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 

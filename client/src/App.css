@@ -40,3 +40,30 @@
 .read-the-docs {
   color: #888;
 }
+
+.auth-toggle-wrapper {
+  width: 100%;
+  text-align: center;
+  margin-top: 1rem;;
+}
+
+.auth-toggle-wrapper p {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.auth-toggle-wrapper button {
+  color: #3b82f6; /* blue-500 */
+  background: none;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  text-decoration: underline;
+}
+
+.auth-toggle-wrapper button:hover {
+  color: #1d4ed8; /* blue-700 */
+}
+
+

@@ -13,6 +13,7 @@ const AuthView = ({ setIsLoading, setMessage, onAuthSuccess }) => {
           setIsLoading={setIsLoading}
           setMessage={setMessage}
           onAuthSuccess={onAuthSuccess}
+          onSwitchView={() => setIsLoginView(false)}
         />
       ) : (
         <RegisterForm
@@ -22,19 +23,10 @@ const AuthView = ({ setIsLoading, setMessage, onAuthSuccess }) => {
             setMessage('Registration successful! Please log in.');
             setIsLoginView(true); // Switch to login view after successful registration
           }}
+          onSwitchView={() => setIsLoginView(true)}
         />
       )}
 
-      {/* Toggle between login and register views */}
-      <p className="text-center text-sm text-gray-600 mt-6">
-        {isLoginView ? "Don't have an account?" : "Already have an account?"}{' '}
-        <button
-          onClick={() => setIsLoginView(!isLoginView)}
-          className="text-blue-600 hover:text-blue-800 font-medium transition duration-300"
-        >
-          {isLoginView ? 'Register here.' : 'Login here.'}
-        </button>
-      </p>
     </>
   );
 };
