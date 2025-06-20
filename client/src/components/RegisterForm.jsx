@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 // you might need to go up two levels. If RegisterForm.jsx is in 'src/auth/' and config.js in 'src/config/',
 // you would need to go up one level. This path assumes the latter.
 import { API_BASE_URL } from '../config/config'; 
+import './RegisterForm.css'; // Import CSS for styling
 
 // Register Form Component
-const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
+const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess, onSwitchView }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState(''); // New state for email to store the user's email input
-  const [role, setRole] = useState('user'); // Default role is 'user'
+  const [role, setRole] = useState(""); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,73 +44,71 @@ const RegisterForm = ({ setIsLoading, setMessage, onRegistrationSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-username">
-          Username
-        </label>
+    <div className="register-fullscreen">
+      <div className="register-form-box">
+        <form className="register-form"></form>
+        <h4 className="register-title">Register</h4>
+        <form onSubmit={handleSubmit} className="register-form">
+      <div className='animated-input'>
         <input
           type="text"
           id="new-username"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
+          placeholder=" "
         />
+        <label htmlFor="new-username">Username</label>
       </div>
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-password">
-          Password
-        </label>
+      <div className="animated-input">
         <input
           type="password"
           id="new-password"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          placeholder=" "
         />
+        <label htmlFor="new-password">Password</label>
       </div>
       
       {/* THIS IS THE EMAIL INPUT FIELD */}
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-email">
-          Email
-        </label>
+      <div className="animated-input">
         <input
           type="email"
           id="new-email"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-          placeholder="your.email@example.com"
+          placeholder=" "
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required // Making email a required field for registration
         />
+        <label htmlFor="new-email">Email</label>
       </div>
       
       {/* Optional role selection for registration */}
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-role">
-          Role
-        </label>
+      <div className="animated-input">
         <select
           id="new-role"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           value={role}
           onChange={(e) => setRole(e.target.value)}
+          required // Making role selection a required field for registration
         >
+          <option value=" ">Select Role</option>
           <option value="user">User</option>
           <option value="admin">Admin</option>
           <option value="tester">Tester</option> {/* Added Tester role option */}
         </select>
       </div>
-      <button
-        type="submit"
-        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
-      >
-        Register
-      </button>
-    </form>
+      <button type="submit" className="register-submit-button">Register</button>
+        <p className="toggle-auth-text">
+          Already have an account?{' '}
+          <button type="button" onClick={onSwitchView}>
+            Back to Login
+          </button>
+        </p>
+      </form>
+    </div>
+  </div>
   );
 };
 

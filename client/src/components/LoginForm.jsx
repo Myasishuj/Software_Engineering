@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import './LoginForm.css'; // Import CSS for styling
 
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
 // Login Form Component
-const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
+const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -40,41 +41,57 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-          Username
-        </label>
-        <input
-          type="text"
-          id="username"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
+  <div className="login-fullscreen">
+    <div className="box">
+      <div className="form">
+        <h4>Log In</h4>
+        <form onSubmit={handleSubmit}>
+          <div className="inputBox">
+            <input
+              type="text"
+              id="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <span>Username</span>
+            <i></i>
+          </div>
+
+          <div className="inputBox">
+            <input
+              type="password"
+              id="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <span>Password</span>
+            <i></i>
+          </div>
+
+          <div className="loglinks">
+            <a href="#">Forgot Password</a>
+          </div>
+
+          <button type="submit" className="submit-btn">
+            Log In
+          </button>
+          <p className="toggle-auth-text">
+            Don't have an account?{' '}
+          <button
+            type="button"
+            onClick={onSwitchView}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+  >
+            Register here.
+  </button>
+</p>
+        </form>
       </div>
-      <div>
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-          Password
-        </label>
-        <input
-          type="password"
-          id="password"
-          className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </div>
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
-      >
-        Log In
-      </button>
-    </form>
-  );
+    </div>
+  </div>
+);
 };
 
 export default LoginForm;

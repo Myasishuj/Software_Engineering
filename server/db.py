@@ -4,7 +4,7 @@ import config
 client = MongoClient(config.MONGO_URI)
 db = client[config.DB_NAME]
 users_collection = db[config.USERS_COLLECTION]
-user_data_collection = db[config.USER_DATA_COLLECTION]
+user_data_collection = db[config.USERS_COLLECTION]
 
 # Optional health check
 try:

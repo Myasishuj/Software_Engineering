@@ -3,6 +3,7 @@ import AuthView from './components/AuthView'; // Removed .jsx extension
 import UserDashboardView from './components/UserDashboardView'; // Removed .jsx extension
 import AdminDashboardView from './components/AdminDashboardView'; // Removed .jsx extension
 import { FileSpreadsheet } from 'lucide-react'; // Import icon for consistent styling
+import './App.css'; // Import global styles
 
 // Main App component
 const App = () => {

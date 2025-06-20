@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogOut, Settings, Eye, Download, CheckCircle, XCircle, Clock, Trash2, Mail, Search } from 'lucide-react'; // Import Mail and Search icons
+import './AdminDashboardView.css'; // Import CSS styles
 
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
@@ -353,20 +354,20 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
 
 
   return (
-    <div className="space-y-6 p-4 md:p-8 bg-gray-50 min-h-screen">
-      <h2 className="text-3xl md:text-4xl font-extrabold text-blue-800 text-center mb-6 md:mb-8">Admin Dashboard</h2>
+    <div className="admin-dashboard">
+      <h2 className="admin-header">Admin Dashboard</h2>
 
       {/* Admin Controls / Logout */}
-      <div className="flex flex-wrap justify-center md:justify-between items-center gap-4 mb-6">
+      <div className="admin-actions">
         <button
           onClick={refreshAllAdminData}
           disabled={dataLoading || isLoading}
-          className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 w-full sm:w-auto"
-        >
+          className="admin-button refresh-button"
+          >
           {dataLoading || isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            <div className="loading-spinner"></div>
           ) : (
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="icon" />
           )}
           {dataLoading || isLoading ? 'Refreshing Data...' : 'Refresh All Admin Data'}
         </button>
@@ -374,9 +375,9 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
         <button
           onClick={handleDownloadAllExcel}
           disabled={approvedDailyData.length === 0 || isLoading}
-          className="flex items-center justify-center bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:bg-gray-400 w-full sm:w-auto"
-        >
-          <Download className="w-4 h-4 mr-2" />
+          className="admin-button download-button" 
+          >
+          <Download className="icon" />
           Download All Approved Data (Excel)
         </button>
 
@@ -384,50 +385,50 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
         <button
           onClick={() => setShowClearConfirm(true)}
           disabled={approvedDailyData.length === 0 || isLoading}
-          className="flex items-center justify-center bg-red-700 hover:bg-red-800 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:bg-gray-400 w-full sm:w-auto"
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
+          className="admin-button delete-button"
+           >
+          <Trash2 className="icon" />
           Clear All Submissions
         </button>
 
         <button
           onClick={onLogout}
-          className="flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 w-full sm:w-auto"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
+          className="admin-button logout-button"
+           >
+          <LogOut className="icon" />
           Logout
         </button>
       </div>
 
       {dataError && (
-        <div className="p-3 mb-4 rounded-md text-sm font-medium bg-red-100 text-red-700 border border-red-200">
+        <div className="error-alert">
           {dataError}
         </div>
       )}
 
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm flex items-center shadow-md">
-        <Settings className="w-5 h-5 mr-3 text-yellow-600" />
+      <div className="admin-welcome">
+        <Settings className="icon warning-icon" />
         <p>Welcome, **Admin**! Here you can manage all user data and download comprehensive reports.</p>
       </div>
 
       {/* Confirmation Modal for Clearing Data */}
       {showClearConfirm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-            <h3 className="text-lg font-bold text-red-700 mb-4">Confirm Data Deletion</h3>
-            <p className="text-gray-700 mb-6">
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h3 className="modal-title">Confirm Data Deletion</h3>
+            <p className="modal-message">
               Are you sure you want to permanently delete ALL submissions (pending, approved, rejected)? This action cannot be undone.
             </p>
-            <div className="flex justify-center space-x-4">
+            <div className="modal-actions">
               <button
                 onClick={handleClearApprovedData}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                className="confirm-button"
               >
                 Yes, Delete All Data
               </button>
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors"
+                className="cancel-button"
               >
                 Cancel
               </button>
@@ -437,42 +438,42 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
       )}
 
       {/* NEW: Admin User Search Section */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <Search className="w-5 h-5 mr-2 text-purple-500" />
+      <div className="search-box">
+        <h2 className="section-title">
+          <Search className="icon purple-icon" />
           Search User Submissions
         </h2>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
+        <div className="search-controls">
           <input
             type="text"
             placeholder="Enter username to search"
             value={searchUsername}
             onChange={(e) => setSearchUsername(e.target.value)}
-            className="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="input-field" 
           />
           <button
             onClick={handleSearchUserSubmissions}
             disabled={isLoading || dataLoading || !searchUsername.trim()}
-            className="flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 disabled:bg-gray-400 w-full sm:w-auto"
-          >
+            className="search-button"
+            >
             {isLoading || dataLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="loading-spinner"></div>
             ) : (
-              <Search className="w-4 h-4 mr-2" />
+              <Search className="icon" />
             )}
             Search User
           </button>
         </div>
 
         {searchedUserData !== null && (
-          <div className="mt-6 border-t pt-4 border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+          <div className="search-results">
+            <h3 className="results-title">
               Results for "{searchUsername}" ({searchedUserData.length} submissions)
             </h3>
             {searchedUserData.length > 0 ? (
-              <div className="space-y-4">
+              <div className="results-list">
                 {searchedUserData.map(submission => (
-                  <div key={submission._id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <div key={submission._id} className="result-card">
                     <p className="text-gray-700 mb-1"><strong>Submission ID:</strong> {submission._id.substring(0, 8)}...</p>
                     <p className="text-gray-700 mb-1"><strong>Username:</strong> {submission.username}</p>
                     <p className="text-gray-700 mb-1">
@@ -500,55 +501,55 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600">No submissions found for this user.</p>
+              <p className="no-results">No submissions found for this user.</p>
             )}
           </div>
         )}
       </div>
 
       {/* Send Expired Notifications Section */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <Mail className="w-5 h-5 mr-2 text-indigo-500" />
+      <div className="notification-section">
+        <h2 className="section-title">
+          <Mail className="icon indigo-icon" />
           Send Expired Item Notifications
         </h2>
-        <p className="text-gray-700 mb-4">
+        <p className="section-description">
           Send an email notification about items expiring or recently expired based on a threshold.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="flex flex-col">
-            <label htmlFor="notification-mode" className="text-gray-700 text-sm font-medium mb-2">Target Audience:</label>
+        <div className="notification-grid">
+          <div className="form-group">
+            <label htmlFor="notification-mode" className="label" >Target Audience:</label>
             <select
               id="notification-mode"
               value={notificationMode}
               onChange={(e) => setNotificationMode(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
+              className="input-field"
+              >
               <option value="all">All Users</option>
               <option value="specific">Specific User</option>
             </select>
           </div>
           {notificationMode === 'specific' && (
-            <div className="flex flex-col">
-              <label htmlFor="specific-username-input" className="text-gray-700 text-sm font-medium mb-2">Specific Username:</label>
+            <div className="form-group">
+              <label htmlFor="specific-username-input" className="label">Specific Username:</label>
               <input
                 type="text"
                 id="specific-username-input"
                 placeholder="e.g., tester1"
                 value={notificationSpecificUsername}
                 onChange={(e) => setNotificationSpecificUsername(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
               />
             </div>
           )}
-          <div className="flex flex-col">
-            <label htmlFor="days-threshold-input" className="text-gray-700 text-sm font-medium mb-2">Days Threshold (Past/Future):</label>
+          <div className="form-group">
+            <label htmlFor="days-threshold-input" className="label">Days Threshold (Past/Future):</label>
             <input
               type="number"
               id="days-threshold-input"
               value={daysThreshold}
               onChange={(e) => setDaysThreshold(parseInt(e.target.value) || 0)} // Ensure integer, default to 0 if invalid
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="input-field"
               min="0"
             />
           </div>
@@ -556,33 +557,33 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
         <button
           onClick={handleSendExpiredNotifications}
           disabled={isLoading || dataLoading}
-          className="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 disabled:bg-gray-400 w-full"
-        >
+          className="notification-button"
+          >
           {isLoading || dataLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            <div className="loading-spinner"></div>
           ) : (
-            <Mail className="w-4 h-4 mr-2" />
+            <Mail className="icon" />
           )}
           Send Notifications
         </button>
         {emailNotificationStatus && (
-          <div className={`mt-4 p-3 rounded-lg text-sm ${emailNotificationStatus.includes('Failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          <div className={`notification-status ${emailNotificationStatus.includes('Failed') ? 'error' : 'success'}`}>
             {emailNotificationStatus}
           </div>
         )}
       </div>
 
       {/* Display Pending Requests */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-          <Clock className="w-5 h-5 mr-2 text-blue-500" />
+      <div className="pending-section">
+        <h3 className="section-title">
+          <Clock className="icon blue-icon" />
           Pending User Requests ({pendingRequests.length})
         </h3>
         {pendingRequests.length === 0 && !dataLoading && !dataError ? (
-          <p className="text-gray-600">No pending requests at the moment.</p>
+          <p className="no-results">No pending requests at the moment.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
@@ -608,18 +609,18 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
                       {renderRecords(request.records)} {/* Using the helper */}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="action-buttons">
                         <button
                           onClick={() => handleApproveRequest(request._id)}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" /> Approve
+                          <CheckCircle className="icon" /> Approve
                         </button>
                         <button
                           onClick={() => handleRejectRequest(request._id)}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
-                          <XCircle className="w-4 h-4 mr-1" /> Reject
+                          <XCircle className="icon" /> Reject
                         </button>
                       </div>
                     </td>
@@ -632,32 +633,32 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
       </div>
 
       {/* Display Approved Daily Data (for viewing what's been approved) */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-700 mb-4 flex justify-between items-center">
-          <Download className="w-5 h-5 mr-2 text-teal-500" />
+      <div className="approved-section">
+        <h3 className="section-title">
+          <Download className="icon teal-icon" />
           Currently Approved Data ({approvedDailyData.length} entries)
           {approvedDailyData.length > 0 && (
             <button
               onClick={() => setShowRawData(!showRawData)}
-              className="text-sm text-purple-600 hover:text-purple-800 flex items-center ml-auto"
+              className="toggle-json-button"
             >
-              {showRawData ? <Eye className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+              {showRawData ? <Eye className="icon" /> : <Eye className="icon" />}
               {showRawData ? 'Hide Raw JSON' : 'Show Raw JSON'}
             </button>
           )}
         </h3>
 
         {approvedDailyData.length === 0 && !dataLoading && !dataError && (
-          <p className="text-gray-600">No approved data found yet.</p>
+          <p className="no-results">No approved data found yet.</p>
         )}
 
         {showRawData ? (
-          <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto">
+          <pre className="json-viewer">
             {JSON.stringify(approvedDailyData, null, 2)}
           </pre>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission ID</th>
@@ -697,6 +698,7 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
       </div>
     </div>
   );
-};
+};  
 
 export default AdminDashboardView;
+  
