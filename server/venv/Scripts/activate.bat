@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< HEAD
 set VIRTUAL_ENV=C:\Users\benja\OneDrive\Desktop\Lecture Notes\Degree BCSCUN\Sem 5\5005CMD Software Engineering\Group Project\Software_Engineering\server\venv
+=======
+set VIRTUAL_ENV=C:\Users\benja\OneDrive\Desktop\Lecture Notes\Degree BCSCUN\Sem 5\5005CMD Software Engineering\Group Project\Software_Engineering-backup\server\venv
+>>>>>>> backup-zip-snapshot
 
 if not defined PROMPT set PROMPT=$P$G
 

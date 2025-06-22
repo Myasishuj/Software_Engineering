@@ -9,6 +9,7 @@ const Sidebar = ({ currentUser, onLogout }) => (
     <aside className="w-64 flex-shrink-0 bg-gradient-to-b from-blue-500 to-purple-100 border-r border-blue-200 shadow-md p-6 flex justify-between h-full">
         {/* Top Content */}
         <div className="content">
+            <flex>
             <h2 className="text-xl font-bold text-gray-800 mb-2">Welcome to Excel Creator, {currentUser}</h2>
             <p className="text-sm text-gray-700 mb-6">
                 Submit data or upload JSON. Download your <strong>approved</strong> reports anytime.
@@ -47,15 +48,18 @@ const Sidebar = ({ currentUser, onLogout }) => (
                     </li>
                 </nav>
             </ul>
+            </flex>
         </div>
 
         {/* Logout */}
-        <button class="btn hologram"
-        onClick={onLogout}>
-            <LogOut className="w-5 h-5" />
-            <span data-text="Logout">Logout</span>
-            <div class="scan-line"></div>
-        </button>
+        <div className="box_divider1">
+            <button class="btn hologram"
+            onClick={onLogout}>
+                <LogOut className="w-5 h-5" />
+                <span data-text="Logout">Logout</span>
+                <div class="scan-line"></div>
+            </button>
+        </div>
     </aside>
 );
 

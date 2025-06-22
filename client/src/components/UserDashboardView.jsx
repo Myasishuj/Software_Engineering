@@ -351,294 +351,316 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   };
 
   return (
+    
+    <div className="userDashBody">
+      <div className="md:!flex h-full">
+        {/* Sidebar */}
+        <Sidebar currentUser={currentUser} onLogout={onLogout} />
 
-    <div className="md:!flex h-full">
-      {/* Sidebar */}
-      <Sidebar currentUser={currentUser} onLogout={onLogout} />
 
-
-      {/* Main Content Area */}
-        <main className="flex-1 flex overflow-y-auto p-6 space-y-6 bg-gray-50">
-          {/* Notification Area */}
-            <div className="h-screen p-6 space-y-6">
-              {expiringItems.length > 0 && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg flex items-center justify-between shadow-md">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-6 h-6 mr-3" />
-                    <span className="font-semibold">
-                      You have {expiringItems.length} item(s) expiring soon!
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="text-yellow-700 hover:text-yellow-900 font-medium ml-4 focus:outline-none"
-                  >
-                    {showNotifications ? 'Hide Details' : 'View Details'}
-                  </button>
-                </div>
-              )}
-
-              {showNotifications && expiringItems.length > 0 && (
-                <div className="bg-white p-4 rounded-lg shadow-inner border border-gray-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-3">Expiring Items:</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700">
-                    {expiringItems.map((item, index) => (
-                      <li key={index} className="text-sm">
-                        <span className="font-semibold">{item.pname || item.pid || 'N/A'}</span> (Expires: {item.expiry || 'N/A'})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-          {/* Data Submission Section */}
-          <section id="submit">
-            <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Submit Your Data for Approval</h2>
-                
-                {/* Mode Toggle Buttons */}
-                  <div className="flex bg-gray-100 rounded-lg p-1">
+        {/* Main Content Area */}
+          <main className="flex-1 flex overflow-y-auto p-6 space-y-6 bg-gray-50">
+            {/* Notification Area */}
+              <div className="h-screen p-6 space-y-6">
+                {expiringItems.length > 0 && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg flex items-center justify-between shadow-md">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-6 h-6 mr-3" />
+                      <span className="font-semibold">
+                        You have {expiringItems.length} item(s) expiring soon!
+                      </span>
+                    </div>
                     <button
-                      onClick={() => setSubmissionMode('form')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        submissionMode === 'form' 
-                          ? 'bg-white text-purple-600 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-800'
-                      }`}
+                      onClick={() => setShowNotifications(!showNotifications)}
+                      className="text-yellow-700 hover:text-yellow-900 font-medium ml-4 focus:outline-none"
                     >
-                        Easy Form
-                    </button>
-                    <div class="divider"/>
-                    
-                    <button
-                      onClick={() => setSubmissionMode('json')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        submissionMode === 'json' 
-                          ? 'bg-white text-purple-600 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                    >
-                      JSON Mode
+                      {showNotifications ? 'Hide Details' : 'View Details'}
                     </button>
                   </div>
+                )}
+
+                {showNotifications && expiringItems.length > 0 && (
+                  <div className="bg-white p-4 rounded-lg shadow-inner border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3">Expiring Items:</h3>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700">
+                      {expiringItems.map((item, index) => (
+                        <li key={index} className="text-sm">
+                          <span className="font-semibold">{item.pname || item.pid || 'N/A'}</span> (Expires: {item.expiry || 'N/A'})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              {submissionMode === 'form' ? (
-                /* Form Input Mode */
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="m-4 p-4 text-gray-700 text-sm font-semibold">
-                        Data Fields
-                      </label>
-                      <div class="divider"/>
+            {/* Data Submission Section */}
+            <section id="submit">
+              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-800">Submit Your Data for Approval</h2>
+                  
+                  {/* Mode Toggle Buttons */}
+                    <div className="flex bg-gray-100 rounded-lg p-1">
                       <button
-                        type="button"
-                        onClick={() => setShowJsonPreview(!showJsonPreview)}
-                        className="flex items-center text-sm text-purple-600 hover:text-purple-800"
+                        onClick={() => setSubmissionMode('form')}
+                        className={`box_divider1 btn hologram ${
+                          submissionMode === 'form' 
+                            ? 'bg-white text-purple-600 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
                       >
-                        <div class="divider"/>
-                        {showJsonPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-                        {showJsonPreview ? ' Hide' : ' Preview'} JSON
+                          <span data-text="Easy Form">Easy Form</span>
+                          <div class="scan-line"></div>
+                      </button>
+                      <div class="divider"/>
+                      
+                      <button
+                        onClick={() => setSubmissionMode('json')}
+                        className={`box_divider1 btn hologram ${
+                          submissionMode === 'json' 
+                            ? 'bg-white text-purple-600 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        <span data-text="JSON Mode">JSON Mode</span>
+                        <div class="scan-line"></div>
                       </button>
                     </div>
-                    
-                    {/* Dynamic Form Fields */}
-                    {dataEntries.map((entry, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                </div>
+
+                {submissionMode === 'form' ? (
+                  /* Form Input Mode */
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="m-4 p-4 text-gray-700 text-sm font-semibold">
+                          Data Fields
+                        </label>
                         <div class="divider"/>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Field name (e.g., item, product, name)"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            value={entry.key}
-                            onChange={(e) => updateEntry(index, 'key', e.target.value)}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder={entry.placeholder || "Value (e.g. apple, laptop, book)"} 
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            value={entry.value}
-                            onChange={(e) => updateEntry(index, 'value', e.target.value)}
-                          />
-                        </div>
                         <button
                           type="button"
-                          onClick={() => removeEntry(index)}
-                          disabled={dataEntries.length === 1} 
-                          className="p-2 text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          onClick={() => setShowJsonPreview(!showJsonPreview)}
+                          className="box_divider1 btn hologram"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          {showJsonPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                          {showJsonPreview ? ' Hide' : ' Preview'} <span data-text="JSON">JSON</span>
+                          <div class="scan-line"></div>
                         </button>
                       </div>
-                    ))}
-                    
-                    {/* Add New Field Button */}
+                      
+                      {/* Dynamic Form Fields */}
+                      {dataEntries.map((entry, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                          <div class="divider"/>
+
+
+
+                          {/* <div class="col-3">
+                              <input class="effect-1" type="text" placeholder="Placeholder Text"/>
+                              <span class="focus-border"></span>
+                          </div> */}
+
+
+
+                          <div className="col-3">
+                            <input
+                              type="text"
+                              placeholder="Field name (e.g., item, product, name)"
+                              className="effect-1"
+                              value={entry.key}
+                              onChange={(e) => updateEntry(index, 'key', e.target.value)}
+                            />
+                            <span class="focus-border"></span>
+                          </div>
+                          <div className="col-3">
+                            <input
+                              type="text"
+                              placeholder={entry.placeholder || "Value (e.g. apple, laptop, book)"} 
+                              className="effect-1"
+                              value={entry.value}
+                              onChange={(e) => updateEntry(index, 'value', e.target.value)}
+                            />
+                            <span class="focus-border"></span>
+                          </div>
+
+                          <button class="box_divider1 btn hologram"
+                            type="button"
+                            onClick={() => removeEntry(index)}
+                            disabled={dataEntries.length === 1}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                      
+                      {/* Add New Field Button */}
+                      <button class="box_divider1 btn hologram"
+                        type="button"
+                        onClick={addNewEntry}
+                        >
+                        <Plus className="w-5 h-5 mr-2" />
+                        <span data-text="Add Another Field">Add Another Field</span>
+                        <div class="scan-line"></div>
+                      </button>
+                    </div>
+
+                    {/* JSON Preview Section */}
+                    {showJsonPreview && (
+                      <div className="bg-gray-100 p-4 rounded-lg">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">JSON Preview:</h4>
+                        <pre className="text-sm text-gray-600 overflow-x-auto">
+                          {JSON.stringify(convertToJson(), null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Submit Data Button (Form Mode) */}
                     <button class="btn hologram"
-                      type="button"
-                      onClick={addNewEntry}
-                      >
-                      <Plus className="w-5 h-5 mr-2" />
-                      <span data-text="Add Another Field">Add Another Field</span>
+                    onClick={handleFormSubmit}>
+                      <Upload className="w-5 h-5 mr-2" />
+                      <span data-text="Submit Data">Submit Data</span>
+                      <div class="scan-line"></div>
+                    </button>
+
+                  </div>
+                ) : (
+                  /* JSON Input Mode */
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-gray-700 text-sm font-semibold mb-2">
+                        JSON Array of Objects
+                      </label>
+                      <div className="text-sm text-gray-600 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <strong>Example format:</strong>
+                        <pre className="mt-1 text-xs">
+                          {`[{"pid": "A123", "pname": "Product X", "expiry": "12-31-2024", "quantity": 10, "price": 9.99, "type": "Electronics"}]`}
+                        </pre>
+                      </div>
+                      <textarea
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                        rows="8"
+                        placeholder='[{"pid": "P001", "pname": "Item A", "expiry": "01-01-2025", "quantity": 5, "price": 100.00, "type": "Book"}]'
+                        value={jsonInput}
+                        onChange={(e) => setJsonInput(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    {/* Submit Data Button (JSON Mode) */}
+                    <button class="box_divider1 btn hologram"
+                      onClick={handleJsonSubmit}>
+                      <Upload className="w-5 h-5 mr-2" />
+                      <span data-text="Submit JSON Data">Submit JSON Data</span>
                       <div class="scan-line"></div>
                     </button>
                   </div>
+                )}
+              </div>
+            </section>
 
-                  {/* JSON Preview Section */}
-                  {showJsonPreview && (
-                    <div className="bg-gray-100 p-4 rounded-lg">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">JSON Preview:</h4>
-                      <pre className="text-sm text-gray-600 overflow-x-auto">
-                        {JSON.stringify(convertToJson(), null, 2)}
-                      </pre>
-                    </div>
-                  )}
+            {/* Barcode Generation Section */}
+            <section id="barcode">
+              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Generate Barcode from Approved Data</h2>
+                <p class="warningMsg">
+                  Enter a term (e.g., a product ID or name) to search approved data and view its barcode.
+                </p>
+                <div className="flex space-x-2 mb-4">
 
-                  {/* Submit Data Button (Form Mode) */}
+                  <div class="form__group">
+                    <input
+                      type="text"
+                      placeholder=""
+                      className="form__field"
+                      name="barcode term"
+                      value={barcodeSearchQuery}
+                      onChange={(e) => setBarcodeSearchQuery(e.target.value)}
+                    />
+                    <label for="barcode term" class="form__label">Search term for barcode</label>
+                  </div>
+
+                  <div class="divider"/>
+
                   <button class="btn hologram"
-                  onClick={handleFormSubmit}>
-                  <Upload className="w-5 h-5 mr-2" />
-                  <span data-text="Submit Data">Submit Data</span>
-                  <div class="scan-line"></div>
+                    onClick={handleSearchForBarcode}
+                    disabled={isLoading} 
+                    >
+                    <Search className="w-4 h-4 mr-2" />
+                    <span data-text="Search & Generate">Search & Generate</span>
+                    <div class="scan-line"></div>
                   </button>
 
+                  
+                  <div class="divider"/>
                 </div>
-              ) : (
-                /* JSON Input Mode */
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-semibold mb-2">
-                      JSON Array of Objects
-                    </label>
-                    <div className="text-sm text-gray-600 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <strong>Example format:</strong>
-                      <pre className="mt-1 text-xs">
-                        {`[{"pid": "A123", "pname": "Product X", "expiry": "12-31-2024", "quantity": 10, "price": 9.99, "type": "Electronics"}]`}
-                      </pre>
-                    </div>
-                    <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
-                      rows="8"
-                      placeholder='[{"pid": "P001", "pname": "Item A", "expiry": "01-01-2025", "quantity": 5, "price": 100.00, "type": "Book"}]'
-                      value={jsonInput}
-                      onChange={(e) => setJsonInput(e.target.value)}
-                      required
-                    />
+                {barcodeErrorMessage && (
+                  
+                  <div class="errorMsg" className="p-2 bg-red-100 text-red-700 !border-red-500 rounded-md text-sm mb-4">
+                    {barcodeErrorMessage}
                   </div>
                   
-                  {/* Submit Data Button (JSON Mode) */}
-                  <button
-                    onClick={handleJsonSubmit}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-green font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105 flex items-center justify-center"
-                  >
-                    <Upload className="w-5 h-5 mr-2" />
-                    Submit JSON Data
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
+                )}
+                {barcodeResult && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                    {/* Added mb-4 to push the barcode down from the title */}
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                      Generated UPC Barcode for: {barcodeResult['pid'] || barcodeResult['pname'] || 'N/A'}
+                    </h4>
+                    {barcodeResult.barcode_svg_base64 ? (
+                      // Display backend-generated SVG barcode
+                      <img
+                        src={`data:image/svg+xml;base64,${barcodeResult.barcode_svg_base64}`}
+                        alt={`UPC Barcode for ${barcodeResult.pid || barcodeResult.pname || 'item'}`}
+                        className="mx-auto h-48 object-contain px-4" // INCREASED HEIGHT (h-48), added horizontal padding
+                      />
+                    ) : (
+                      // Fallback to client-side JsBarcode if backend didn't provide SVG
+                      // Increased canvas width and height attributes for UPC aspect ratio
+                      <canvas ref={barcodeCanvasRef} width="500" height="200" className="mx-auto border border-gray-300 bg-white rounded-md"></canvas>
+                    )}
+                    
+                    {/* Explicitly show the encoded barcode data/number */}
+                    <p className="text-lg font-bold text-gray-800 mt-4 break-words">
+                      Encoded UPC Value: <span className="font-mono text-base bg-gray-200 p-2 rounded-md inline-block">{barcodeResult.encoded_barcode_value || getUpcValueFromRecord(barcodeResult)}</span>
+                    </p>
 
-          {/* Barcode Generation Section */}
-          <section id="barcode">
-            <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Generate Barcode from Approved Data</h2>
-              <p class="warningMsg">
-                Enter a term (e.g., a product ID or name) to search approved data and view its barcode.
-              </p>
-              <div className="flex space-x-2 mb-4">
-                <input
-                  type="text"
-                  placeholder="Search term for barcode"
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={barcodeSearchQuery}
-                  onChange={(e) => setBarcodeSearchQuery(e.target.value)}
-                />
-                <div class="divider"/>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Full Record Data: <span className="font-mono text-xs">
+                        {JSON.stringify(barcodeResult, null, 2).length > 200 ? 
+                        JSON.stringify(barcodeResult, null, 2).substring(0, 200) + '...' : 
+                        JSON.stringify(barcodeResult, null, 2)
+                        }
+                      </span>
+                    </p>
+                    <p className="text-xs text-red-600 mt-1">
+                      **Important:** UPC barcodes require exactly 12 numeric digits. For real industrial use, consider adding a dedicated 'upc_code' field to your data.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Excel Download Section */}
+            <section id="excel">
+              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Your Approved Daily Report</h2>
+                <p class="warningMsg">
+                  Download an Excel file containing all the data you've submitted <b>and that has been approved by an admin for today</b>.
+                </p>
                 <button class="btn hologram"
-                  onClick={handleSearchForBarcode}
-                  disabled={isLoading} 
-                  >
-                  <Search className="w-4 h-4 mr-2" />
-                  <span data-text="Search & Generate">Search & Generate</span>
+                  onClick={handleDownloadExcel}
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  <span data-text="Download Today's Approved Excel Report">Download Today's Approved Excel Report</span>
                   <div class="scan-line"></div>
                 </button>
-
-                
-                <div class="divider"/>
               </div>
-              {barcodeErrorMessage && (
-                
-                <div class="errorMsg" className="p-2 bg-red-100 text-red-700 !border-red-500 rounded-md text-sm mb-4">
-                  {barcodeErrorMessage}
-                </div>
-                
-              )}
-              {barcodeResult && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                  {/* Added mb-4 to push the barcode down from the title */}
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4">
-                    Generated UPC Barcode for: {barcodeResult['pid'] || barcodeResult['pname'] || 'N/A'}
-                  </h4>
-                  {barcodeResult.barcode_svg_base64 ? (
-                    // Display backend-generated SVG barcode
-                    <img
-                      src={`data:image/svg+xml;base64,${barcodeResult.barcode_svg_base64}`}
-                      alt={`UPC Barcode for ${barcodeResult.pid || barcodeResult.pname || 'item'}`}
-                      className="mx-auto h-48 object-contain px-4" // INCREASED HEIGHT (h-48), added horizontal padding
-                    />
-                  ) : (
-                    // Fallback to client-side JsBarcode if backend didn't provide SVG
-                    // Increased canvas width and height attributes for UPC aspect ratio
-                    <canvas ref={barcodeCanvasRef} width="500" height="200" className="mx-auto border border-gray-300 bg-white rounded-md"></canvas>
-                  )}
-                  
-                  {/* Explicitly show the encoded barcode data/number */}
-                  <p className="text-lg font-bold text-gray-800 mt-4 break-words">
-                    Encoded UPC Value: <span className="font-mono text-base bg-gray-200 p-2 rounded-md inline-block">{barcodeResult.encoded_barcode_value || getUpcValueFromRecord(barcodeResult)}</span>
-                  </p>
 
-                  <p className="text-sm text-gray-600 mt-2">
-                    Full Record Data: <span className="font-mono text-xs">
-                      {JSON.stringify(barcodeResult, null, 2).length > 200 ? 
-                      JSON.stringify(barcodeResult, null, 2).substring(0, 200) + '...' : 
-                      JSON.stringify(barcodeResult, null, 2)
-                      }
-                    </span>
-                  </p>
-                  <p className="text-xs text-red-600 mt-1">
-                    **Important:** UPC barcodes require exactly 12 numeric digits. For real industrial use, consider adding a dedicated 'upc_code' field to your data.
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
+            </section>
 
-          {/* Excel Download Section */}
-          <section id="excel">
-            <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Your Approved Daily Report</h2>
-              <p class="warningMsg">
-                Download an Excel file containing all the data you've submitted <b>and that has been approved by an admin</b> for today.
-              </p>
-              <button class="btn hologram"
-                onClick={handleDownloadExcel}
-              >
-                <Download className="w-5 h-5 mr-2" />
-                <span data-text="Download Today's Approved Excel Report">Download Today's Approved Excel Report</span>
-                <div class="scan-line"></div>
-              </button>
-            </div>
-
-          </section>
-
-          
-        </main>
+            
+          </main>
+      </div>
     </div>
   );
 };

@@ -1,12 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css?family=Damion|Muli:400,600');
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
   color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -22,13 +24,13 @@ a:hover {
   color: #535bf2;
 }
 
-/* body {
+body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-} */
+}
 
 h1 {
   font-size: 3.2em;
@@ -36,11 +38,9 @@ h1 {
 }
 
 button {
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1em;
-  margin-left: 5px;
-  margin-top: 15px;
+  padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
@@ -50,8 +50,6 @@ button {
 }
 button:hover {
   border-color: #646cff;
-  color: #646cff;
-  scale: 5px;
 }
 button:focus,
 button:focus-visible {
@@ -59,6 +57,14 @@ button:focus-visible {
 }
 
 
+
+.userDashBody{
+  background-color: #213547;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
 
 .btn {
   position: relative;
@@ -138,6 +144,24 @@ button:focus-visible {
   100% { top: 110%; }
 }
 
+.btn:active {
+  animation-duration: 0.1s;
+  animation-name: click;
+}
+
+@keyframes click {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform:scale(0.9);
+  }
+  
+  100% {
+    transform:scale(1);
+  }
+}
+
 
 
 .btn2 {
@@ -190,8 +214,118 @@ button:focus-visible {
 
 
 
+.eye{
+    margin-bottom: 2px;
+}
+
+
+
+:focus{
+  outline: none;
+}
+
+.col-3{
+  width: 27.33%;  
+  margin-left: 530px;
+  position: relative;
+} 
+/* necessary to give position: relative to parent. */
+
+input[type="text"]{
+  font: 15px/24px "Lato", Arial, sans-serif; 
+  color: #ffffff; width: 100%; 
+  box-sizing: border-box; 
+  letter-spacing: 1px;
+}
+
+.effect-1{
+  border: 0; 
+  padding: 7px 0; 
+  border-bottom: 1px solid #ccc;
+}
+
+.effect-1 ~ .focus-border{
+  position: absolute; 
+  bottom: 0; 
+  left: 0; 
+  width: 0; 
+  height: 2px; 
+  background-color: #4caf50; 
+  transition: 0.4s;
+}
+
+.effect-1:focus ~ .focus-border{
+  width: 100%; 
+  transition: 0.4s;
+}
+
+
+
+.form__group {
+  position: relative;
+  padding: 15px 0 0;
+  margin-left: 400px;
+  margin-bottom: 20px;
+  width: 40%;
+}
+
+.form__field {
+  font-family: inherit;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid #9b9b9b;
+  outline: 0;
+  font-size: 1.3rem;
+  color: #fff;
+  padding: 7px 0;
+  background: transparent;
+  transition: border-color 0.2s;
+
+  &::placeholder {
+    color: transparent;
+  }
+
+  &:placeholder-shown ~ .form__label {
+    font-size: 1.2rem;
+    cursor: text;
+    top: 20px;
+  }
+}
+
+.form__label {
+  position: absolute;
+  top: 0;
+  display: block;
+  transition: 0.2s;
+  font-size: 1rem;
+  color: #9b9b9b;
+}
+
+.form__field:focus {
+  ~ .form__label {
+    position: absolute;
+    top: 0;
+    display: block;
+    transition: 0.2s;
+    font-size: 1rem;
+    color: #11998e;
+    font-weight:700;    
+  }
+  padding-bottom: 6px;  
+  font-weight: 700;
+  border-width: 1px;
+  border-image: linear-gradient(to right, #11998e, #38ef7d);
+  border-image-slice: 1;
+}
+/* reset input */
+.form__field{
+  &:required,&:invalid { box-shadow:none; }
+}
+
+
+
 .divider{
-    width:5px;
+    width:20px;
     height:auto;
     display:inline-block;
 }
@@ -199,8 +333,14 @@ button:focus-visible {
 .box_divider{
     width:5px;
     height:auto;
+    margin-top: 5px;
     margin-left: 7px;
     display:inline-block;
+}
+
+.box_divider1{
+  margin-top: 15px;
+  margin-bottom: 15px;
 }
 
 .box_divider2{
@@ -222,7 +362,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   max-width: 1200px;
-  margin: 10 auto;
+  margin-left: 75px;
 }
 
 .content h2{
@@ -244,6 +384,8 @@ button:focus-visible {
 .errorMsg{
   color: rgb(181, 35, 35) !important;
 }
+
+
 
 @media (prefers-color-scheme: light) {
   :root {
