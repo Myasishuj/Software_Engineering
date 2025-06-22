@@ -701,8 +701,4 @@ const AdminDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, se
 };  
 
 export default AdminDashboardView;
-<<<<<<< HEAD
   
-=======
-  
->>>>>>> backup-zip-snapshot
