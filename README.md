@@ -58,8 +58,6 @@ Before setting up the application, ensure you have the following installed on yo
 
 ## 4. Project Structure
 
-Your project directory should generally be structured as follows:
-
 YourProject/
 ├── client/                 # React Frontend application
 │   ├── public/
