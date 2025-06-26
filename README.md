@@ -7,8 +7,7 @@ This repository contains the backend (Flask/Python) and frontend (React) code fo
 1.  [Introduction](#1-introduction)
 2.  [Features](#2-features)
 3.  [Prerequisites](#3-prerequisites)
-4.  [Project Structure](#4-project-structure)
-5.  [Setup Instructions](#5-setup-instructions)
+4.  [Setup Instructions](#5-setup-instructions)
     * [Step 5.1: Get the Project Files](#step-51-get-the-project-files)
     * [Step 5.2: Run the Setup Script](#step-52-run-the-setup-script)
 6.  [Running the Application](#6-running-the-application)
@@ -55,28 +54,6 @@ Before setting up the application, ensure you have the following installed on yo
     * Ensure the MongoDB service is running after installation. On Windows, you can usually verify this in "Services".
 * **A Code Editor**: (e.g., VS Code)
 * **PowerShell (Windows)**: Built into Windows.
-
-## 4. Project Structure
-
-YourProject/
-├── client/                 # React Frontend application
-│   ├── public/
-│   ├── src/
-│   │   ├── UserDashboardView.jsx
-│   │   ├── AdminDashboardView.jsx
-│   │   ├── LoginRegister.jsx
-│   │   ├── App.jsx
-│   │   └── ... other React components
-│   ├── package.json
-│   └── ... other frontend files
-├── server/                 # Flask Backend application
-│   ├── main.py
-│   ├── config.py
-│   ├── requirements.txt
-│   └── venv/               # Python Virtual Environment (created during setup)
-├── setup.ps1               # PowerShell setup script
-└── README.md               # This file
-
 
 ## 5. Setup Instructions
 
@@ -216,5 +193,3 @@ Once both the backend and frontend servers are running:
 * **`app.debug = True`**: The `server/main.py` is configured to run in debug mode. This enables automatic server reloading on code changes and provides an interactive debugger. It also triggers the clearing and re-insertion of default templates in MongoDB upon every startup. **For production deployments, `app.run(debug=False)` is highly recommended for security and performance reasons.**
 * **UPC-A Barcodes**: The application generates UPC-A barcodes. Please note that UPC-A requires a 12-digit numeric code. The current implementation in `server/main.py` attempts to derive an 11-digit numeric value from the `pid` field (or uses a demo value if `pid` is not suitable). **For real industrial applications, you should establish a robust system for assigning and managing unique 12-digit UPC codes to your products.** This often means having a dedicated `upc_code` field in your data that is strictly numeric and of the correct length.
 * **Email Configuration**: The email notification feature requires correct SMTP server details and credentials in `server/config.py`. Ensure these are set up securely (e.g., using app passwords for services like Gmail).
-
----
