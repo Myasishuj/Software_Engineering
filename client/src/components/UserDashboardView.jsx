@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Upload, Download, LogOut, Eye, EyeOff, Search, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, Eye, EyeOff, Search, AlertCircle } from 'lucide-react';
 import Sidebar from './Sidebar';
+import FloatingNotification from './FloatingNotification';
 import JsBarcode from 'jsbarcode'; // Using direct npm import
 
 // Base URL for the backend API (needs to be consistent across components)
@@ -28,7 +29,44 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
 
   // Expiring items notification states
   const [expiringItems, setExpiringItems] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false); // State to control visibility of notification details
+  const [toastMessage, setToastMessage] = useState('');
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setToastMessage('');
+  }, 2000);
+
+  return () => clearTimeout(timer);
+}, []);
+
+useEffect(() => {
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.sidebar a.section_link');
+
+  const handleScroll = () => {
+    let currentId = '';
+
+    sections.forEach(section => {
+      const top = section.offsetTop;
+      const height = section.offsetHeight;
+
+      if (window.scrollY >= top - 60 && window.scrollY < top + height - 60) {
+        currentId = section.getAttribute('id');
+      }
+    });
+
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === `#${currentId}`) {
+        link.classList.add('active');
+      }
+    });
+  };
+
+  handleScroll(); // Run immediately on mount
+  window.addEventListener('scroll', handleScroll);
+  return () => window.removeEventListener('scroll', handleScroll);
+}, []);
 
   // Effect to trigger client-side barcode generation when barcodeResult changes AND
   // it doesn't have a backend SVG AND the canvas ref is ready.
@@ -197,7 +235,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   const handleFormSubmit = async () => {
     const jsonData = convertToJson();
     if (jsonData.length === 0) {
-      setMessage('Please enter at least one key-value pair with both fields filled.');
+      setToastMessage('⚠️ Please enter at least one key-value pair with both fields filled.');
       return;
     }
     await submitData(jsonData);
@@ -213,7 +251,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         throw new Error('Input must be a JSON array of objects.');
       }
     } catch (parseError) {
-      setMessage('Invalid JSON format. Please enter a valid JSON array of objects.');
+      setToastMessage('⚠️ Invalid JSON format. Please enter a valid JSON array of objects.');
       return;
     }
     await submitData(records);
@@ -237,7 +275,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
       const data = await response.json(); 
 
       if (response.ok) {
-        setMessage('Data submitted successfully and is pending admin approval!'); 
+        setMessage('✅ Data submitted successfully and is pending admin approval!'); 
         if (submissionMode === 'form') {
           setDataEntries([
             { key: 'pid', value: '' },
@@ -294,14 +332,14 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         a.click(); 
         a.remove(); 
         window.URL.revokeObjectURL(url); 
-        setMessage('Excel file downloaded successfully!');
+        setToastMessage('✅ Excel file downloaded successfully!');
       } else {
         const errorData = await response.json(); 
-        setMessage(errorData.msg || 'Failed to download Excel file.');
+        setToastMessage(errorData.msg || 'Failed to download Excel file.');
       }
     } catch (error) {
       console.error('Excel download error:', error);
-      setMessage(<div class="errorMsg">Network error during Excel download. Please try again.</div>);
+      setToastMessage('Network error during Excel download. Please try again.');
     } finally {
       setIsLoading(false); 
     }
@@ -315,7 +353,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
     setMessage(''); 
 
     if (!barcodeSearchQuery.trim()) {
-      setBarcodeErrorMessage(<div class="warningMsg">Please enter a search term for the barcode.</div>);
+      setBarcodeErrorMessage(<div class="errorMsg">Please enter a search term for the barcode.</div>);
       setIsLoading(false);
       return;
     }
@@ -337,8 +375,8 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
         // The useEffect will handle rendering the barcode (either SVG or client-side)
       } else {
         setBarcodeResult(null); 
-        setBarcodeErrorMessage(data.msg || 'No approved data found matching your search term.');
-        setMessage('No approved data found matching your search term.');
+        setBarcodeErrorMessage(data.msg || '⚠️ No approved data found matching your search term.');
+        setMessage('⚠️ No approved data found matching your search term.');
       }
     } catch (error) {
       console.error('Error searching for barcode data:', error);
@@ -353,51 +391,35 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
   return (
     
     <div className="userDashBody">
-      <div className="md:!flex h-full">
+      <div>
         {/* Sidebar */}
         <Sidebar currentUser={currentUser} onLogout={onLogout} />
 
 
         {/* Main Content Area */}
-          <main className="flex-1 flex overflow-y-auto p-6 space-y-6 bg-gray-50">
+          <main>
             {/* Notification Area */}
-              <div className="h-screen p-6 space-y-6">
-                {expiringItems.length > 0 && (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg flex items-center justify-between shadow-md">
-                    <div className="flex items-center">
-                      <AlertCircle className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        You have {expiringItems.length} item(s) expiring soon!
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setShowNotifications(!showNotifications)}
-                      className="text-yellow-700 hover:text-yellow-900 font-medium ml-4 focus:outline-none"
-                    >
-                      {showNotifications ? 'Hide Details' : 'View Details'}
-                    </button>
-                  </div>
-                )}
-
-                {showNotifications && expiringItems.length > 0 && (
-                  <div className="bg-white p-4 rounded-lg shadow-inner border border-gray-200">
-                    <h3 className="text-lg font-bold text-gray-800 mb-3">Expiring Items:</h3>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700">
-                      {expiringItems.map((item, index) => (
-                        <li key={index} className="text-sm">
-                          <span className="font-semibold">{item.pname || item.pid || 'N/A'}</span> (Expires: {item.expiry || 'N/A'})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+                
+                {/* TEMP TEST */}
+                {toastMessage && <FloatingNotification message={toastMessage} 
+                onClose={() => setToastMessage('')}
+                />}
+                
+                <FloatingNotification
+                message={
+                  expiringItems.length > 0
+                    ? `You have ${expiringItems.length} item(s) expiring soon!`
+                    : ''
+                }
+                onClose={() => setExpiringItems([])}
+                duration={5000}
+                />
 
             {/* Data Submission Section */}
-            <section id="submit">
-              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-800">Submit Your Data for Approval</h2>
+            <section id="submit" style={{ paddingTop: '2rem' }}>
+              <div>
+                <div>
+                  <h2 className="">Submit Your Data for Approval</h2>
                   
                   {/* Mode Toggle Buttons */}
                     <div className="flex bg-gray-100 rounded-lg p-1">
@@ -559,9 +581,9 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
             </section>
 
             {/* Barcode Generation Section */}
-            <section id="barcode">
-              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Generate Barcode from Approved Data</h2>
+            <section id="barcode" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+              <div>
+                <h2 className="">Generate Barcode from Approved Data</h2>
                 <p class="warningMsg">
                   Enter a term (e.g., a product ID or name) to search approved data and view its barcode.
                 </p>
@@ -601,7 +623,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                   
                 )}
                 {barcodeResult && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                  <div>
                     {/* Added mb-4 to push the barcode down from the title */}
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">
                       Generated UPC Barcode for: {barcodeResult['pid'] || barcodeResult['pname'] || 'N/A'}
@@ -620,11 +642,11 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                     )}
                     
                     {/* Explicitly show the encoded barcode data/number */}
-                    <p className="text-lg font-bold text-gray-800 mt-4 break-words">
+                    <p>
                       Encoded UPC Value: <span className="font-mono text-base bg-gray-200 p-2 rounded-md inline-block">{barcodeResult.encoded_barcode_value || getUpcValueFromRecord(barcodeResult)}</span>
                     </p>
 
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="userMain1">
                       Full Record Data: <span className="font-mono text-xs">
                         {JSON.stringify(barcodeResult, null, 2).length > 200 ? 
                         JSON.stringify(barcodeResult, null, 2).substring(0, 200) + '...' : 
@@ -632,7 +654,7 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
                         }
                       </span>
                     </p>
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="userMain2">
                       **Important:** UPC barcodes require exactly 12 numeric digits. For real industrial use, consider adding a dedicated 'upc_code' field to your data.
                     </p>
                   </div>
@@ -641,9 +663,9 @@ const UserDashboardView = ({ authToken, currentUser, onLogout, setIsLoading, set
             </section>
 
             {/* Excel Download Section */}
-            <section id="excel">
-              <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Your Approved Daily Report</h2>
+            <section id="excel" style={{ minHeight: '610px', paddingTop: '5rem', paddingBottom: '2rem' }}>
+              <div>
+                <h2 className="">Your Approved Daily Report</h2>
                 <p class="warningMsg">
                   Download an Excel file containing all the data you've submitted <b>and that has been approved by an admin for today</b>.
                 </p>

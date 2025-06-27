@@ -255,7 +255,7 @@ def login():
         access_token = create_access_token(identity=user)
         return jsonify(access_token=access_token, username=user['username'], role=user['role']), 200
     else:
-        return jsonify({"msg": "Bad username or password"}), 401
+        return jsonify({"msg": "🚫 Bad username or password"}), 401
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -575,7 +575,7 @@ def download_daily_excel():
 
         if not all_daily_entries:
             logger.info(f"No approved data found for today ({log_scope_msg} scope) for download requested by {current_user_identity}.")
-            return jsonify({"msg": "No approved data found for today to download."}), 404
+            return jsonify({"msg": "⚠️ No approved data found for today to download."}), 404
 
         records_to_download = []
         for entry in all_daily_entries:

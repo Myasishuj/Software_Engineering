@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './LoginForm.css'; // Import CSS for styling
+import FloatingNotification from './FloatingNotification';
 
 // Base URL for the backend API (needs to be consistent across components)
 const API_BASE_URL = 'http://127.0.0.1:5000';
@@ -8,6 +9,7 @@ const API_BASE_URL = 'http://127.0.0.1:5000';
 const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,7 +32,7 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => 
         // Pass token, username, AND role to parent
         onAuthSuccess(data.access_token, username, data.role);
       } else {
-        setMessage(data.msg || 'Login failed. Please check your credentials.');
+        setToastMessage(data.msg || 'Login failed. Please check your credentials.');
       }
     } catch (error) {
       console.error('Login error (check backend server):', error);
@@ -39,6 +41,15 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => 
       setIsLoading(false);
     }
   };
+
+  // Clear toast message after few seconds
+    useEffect(() => {
+        const timer = setTimeout(() => {
+          setToastMessage('');
+        }, 2000);
+      
+        return () => clearTimeout(timer);
+      }, []);
 
   return (
   <div className="login-fullscreen">
@@ -83,11 +94,18 @@ const LoginForm = ({ setIsLoading, setMessage, onAuthSuccess,onSwitchView }) => 
             type="button"
             onClick={onSwitchView}
             className="text-blue-600 hover:text-blue-800 font-medium"
-  >
+          >
             Register here.
-  </button>
-</p>
+          </button>
+        </p>
         </form>
+
+        {/* TEMP TEST */}
+          {toastMessage && <FloatingNotification message={toastMessage} 
+          onClose={() => setToastMessage('')}
+        />}
+
+        
       </div>
     </div>
   </div>

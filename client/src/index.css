@@ -65,6 +65,47 @@ button:focus-visible {
   text-align: center;
 }
 
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 250px;
+  height: 100vh;
+  background: linear-gradient(to bottom, #327bf2, #075b38);
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  border-right: 1px solid #353535;
+  z-index: 1000;
+}
+
+.userMain1{
+  margin-left: 180px;
+}
+
+.userMain2{
+  margin-left: 100px;
+}
+
+.section_link{
+  font-weight: 700;
+  color: #080b3f;
+  text-decoration: inherit;
+}
+
+section {
+  min-height: 300px;
+  padding-bottom: 2rem;
+}
+
+/* a.section_link.active {
+  find in App.css
+} */
+
+html {
+  scroll-behavior: smooth;
+}
+
 .btn {
   position: relative;
   padding: 0.6rem 1rem;
@@ -232,6 +273,7 @@ button:focus-visible {
 
 input[type="text"]{
   font: 15px/24px "Lato", Arial, sans-serif; 
+  padding-left: 10px;
   color: #ffffff; width: 100%; 
   box-sizing: border-box; 
   letter-spacing: 1px;
@@ -239,7 +281,7 @@ input[type="text"]{
 
 .effect-1{
   border: 0; 
-  padding: 7px 0; 
+  padding: 7px 0;
   border-bottom: 1px solid #ccc;
 }
 
@@ -329,6 +371,11 @@ input[type="text"]{
     display:inline-block;
 }
 
+.icon_divider{
+  margin-top: 5px;
+  margin-right: 10px;
+}
+
 .box_divider{
     width:5px;
     height:auto;
@@ -361,7 +408,8 @@ input[type="text"]{
   display: flex;
   flex-direction: column;
   max-width: 1200px;
-  margin-left: 75px;
+  margin-left: 5px;
+  padding-bottom: 10px;
 }
 
 .content h2{
@@ -370,6 +418,32 @@ input[type="text"]{
 
 .content p{
   margin-left: 15px;
+}
+
+.floating-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #333;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  opacity: 0.95;
+  font-size: 0.9rem;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0px);
+    opacity: 0.95;
+  }
 }
 
 .successMsg{

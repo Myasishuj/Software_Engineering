@@ -1,16 +1,10 @@
 #root {
-<<<<<<< HEAD
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-=======
   width: 100vw;
   height: 100vh;
   margin: 0;
   padding: 0;
   background-color: black;
->>>>>>> backup-zip-snapshot
+
 }
 
 .logo {
@@ -74,4 +68,11 @@
   color: #1d4ed8; /* blue-700 */
 }
 
-
+a.section_link.active {
+  font-weight: bold;
+  background-color: #08ad8c;
+  color: white;
+  border-radius: 5px;
+  padding: 6px 12px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

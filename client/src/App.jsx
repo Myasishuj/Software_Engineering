@@ -3,6 +3,7 @@ import AuthView from './components/AuthView'; // Removed .jsx extension
 import UserDashboardView from './components/UserDashboardView'; // Removed .jsx extension
 import AdminDashboardView from './components/AdminDashboardView'; // Removed .jsx extension
 import { FileSpreadsheet } from 'lucide-react'; // Import icon for consistent styling
+import FloatingNotification from './components/FloatingNotification';
 import './App.css'; // Import global styles
 
 // Main App component
@@ -17,7 +18,9 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   // State to manage authentication token (JWT)
   const [authToken, setAuthToken] = useState(null);
-
+  // State to render message prompt as toast
+  const [toastMessage, setToastMessage] = useState('');
+  
   // Clear message after a few seconds
   useEffect(() => {
     if (message) {
@@ -28,12 +31,21 @@ const App = () => {
     }
   }, [message]);
 
+  // Clear toast message after few seconds
+  useEffect(() => {
+      const timer = setTimeout(() => {
+        setToastMessage('');
+      }, 2000);
+    
+      return () => clearTimeout(timer);
+    }, []);
+
   // Function to handle successful authentication
   const handleAuthSuccess = (token, username, role) => {
     setAuthToken(token);
     setCurrentUser(username);
     setUserRole(role); // Set the user's role
-    setMessage('Login successful! Welcome!');
+    setToastMessage('✅ Login successful! Welcome!');
   };
 
   // Function to handle logout
@@ -41,13 +53,19 @@ const App = () => {
     setAuthToken(null);
     setCurrentUser(null);
     setUserRole(null); // Clear the user's role
-    setMessage('You have been logged out.');
+    setToastMessage('✅ You have been logged out.');
   };
 
   // Render AuthView if no token, otherwise render the appropriate DashboardView
   return (
     <div className="userDashBody">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200"> {/* Increased max-w-md to max-w-4xl to accommodate ExcelCreatorApp */}
+
+        {/* TEMP TEST */}
+          {toastMessage && <FloatingNotification message={toastMessage} 
+          onClose={() => setToastMessage('')}
+        />}
+
         <h1 className="text-3xl font-extrabold text-gray-800 text-center mb-6 flex items-center justify-center">
           <FileSpreadsheet className="w-8 h-8 mr-3 text-green-600" /> {/* Added an icon for consistency */}
           {authToken ? `Welcome, ${currentUser} (${userRole})!` : 'Excel Creator - User Authentication'}
